@@ -1355,8 +1355,6 @@ def compute_currents(numdens, xp, xH2, T, zeta, asize, Ndust, grain_type, Qabs, 
     xHp = xp[0]
     xCp = xp[1]
 
-    # Be careful, I might be overestimating the electron fraction at low
-    # volume densities. Giving too much importance to CR ionization.
 
     if isinstance(nH, list):
         #print("I'm running the list")
@@ -1365,7 +1363,7 @@ def compute_currents(numdens, xp, xH2, T, zeta, asize, Ndust, grain_type, Qabs, 
             ne  = nH[i]*xHp[i] + nC[i]*xCp[i]
             # Secondary electrons from CR.
             nH2  = nH[i]*xH2[i]
-            if nH2 > 1.0e2:
+            if nH > 1.0e3:
                 xeCR = CR_xe(nH2, zeta=zeta[i])
                 neCR = nH[i]*xeCR
                 # Take the largest electron density of the two.
@@ -1375,7 +1373,7 @@ def compute_currents(numdens, xp, xH2, T, zeta, asize, Ndust, grain_type, Qabs, 
         ne  = nH*xHp + nC*xCp
         nH2  = nH*xH2
         #print("H2 number density", nH2)
-        if nH2 > 1.0e2:
+        if nH > 1.0e3:
             xeCR = CR_xe(nH2, zeta=zeta)
             neCR = nH*xeCR
             #print("Cosmic ray electrons = ", neCR)
@@ -1760,7 +1758,7 @@ def get_new_zmin_zmax(numdens, xp, T, asize, Ndust, grain_type, Qabs, G0=1.0, ze
     if includeCR:
         zmax +=10
         zmax = min(zmax, zmax_old)
-	        
+
 
     return zmin, zmax
 
@@ -2050,7 +2048,7 @@ def get_QabsTable(grain_type, grain_size, num_sizes=21, dirtables='default'):
     if grain_size < 1.0e1:
         # Do something else.
         print("I'm looking for a grain size smaller than 10 Angstrom. Outside the tabulated data!!!")
-        print("Extrapolating is kinda not working so taking the Qabs, a=10 AA ")
+        print("Using the absorption efficiency for a 10 AA grain")
 
     index_low = index_up - 1
     # Now, get the absorption efficiency for the grains smaller and larger than the one I'm interested in.
@@ -2219,13 +2217,7 @@ def get_zeta(fH2shield, model="high"):
     from pynverse import inversefunc
 
     NH2_func = inversefunc(get_f2shield)
-
-    NH2 = NH2_func(fH2shield)
-
-    #if NH2 < 1.0e21:
-    #    zeta = 0.0
-    #else:
-    #    zeta = 1.0e-15 * (NH2 / 1.0e21)**(-0.366)
+    NH2      = NH2_func(fH2shield)
 
     kL = [-3.331056497233e6, 1.207744586503e6, -1.913914106234e5, 1.731822350618e4, -9.790557206178e2, 3.543830893824e1, -8.034869454520e-1, 1.048808593086e-2, -6.188760100997e-5, 3.122820990797e-8]
     kH = [ 1.001098610761e7, -4.231294690194e6, 7.921914432011e5, -8.623677095423e4, 6.015889127529e3, -2.789238383353e2, 8.595814402406e0, -1.698029737474e-1, 1.951179287567e-3, -9.937499546711e-6]
