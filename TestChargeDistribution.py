@@ -1,13 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import compute_charge_dist as fz
+from pynverse import inversefunc
 
 temp       = np.array( [7000, 100, 10])
 nH         = np.array( [0.9, 52, 1.0e5])
 xe         = np.array( [0.012, 0.00018, 4.2e-10])
 xH2        = np.array( [4.6e-5, 0.032, 0.9986])
-Av         = np.array( [0.046, 0.079, 10.0])
+Av         = np.array( [0.046, 0.079, 10.48])
 fH2shield  = np.array( [0.11, 0.00057, 7.0e-8])
+NH2        = np.array( [5.27e+15, 9.12e+19, 2.91e+22])
 
 Ntot = Av * 1.87e21
 
@@ -30,7 +32,6 @@ print("xe:    %.2g        %.2g      %.1g" %(xe[0], xe[1], xe[2]))
 print("xH2:   %.2g      %.2g        %.4g" %(xH2[0], xH2[1], xH2[2]))
 print("Av:    %.2g        %.2g      %.1g" %(Av[0], Av[1], Av[2]))
 print("Ntot:   %.2g        %.2g      %.1g" %(Ntot[0], Ntot[1], Ntot[2]))
-
 
 grain_type = "carbonaceous"
 grain_size = [5, 50, 100]
@@ -59,7 +60,7 @@ for kk in range(3):
 
         # Get the CR ionization rate given the Column density.
         # Update to the total column density instead of the weird Flash function.
-        zeta = fz.get_zeta(Ntot[ii])
+        zeta = fz.get_zeta(NH2[ii])
 
         ############################################################################################
         # Run the charge distribution calculation!!!
@@ -114,7 +115,8 @@ for kk in range(3):
 
         # Get the CR ionization rate given the Column density.
         # Update to the total column density instead of the weird Flash function.
-        zeta = fz.get_zeta(Ntot[ii])
+        #zeta = fz.get_zeta(Ntot[ii])
+        zeta = fz.get_zeta(NH2[ii])
 
         ############################################################################################
         # Run the charge distribution calculation!!!
@@ -175,11 +177,11 @@ ax.text(0.94, 0.15, "Warm\nNeutral\nMedium", fontsize=20, horizontalalignment='c
 ax.text(0.94, 0.45, "Cold\nNeutral\nMedium", fontsize=20, horizontalalignment='center')
 ax.text(0.94, 0.75,"Cold\nMolecular\nMedium", fontsize=20, horizontalalignment='center')
 
-ax.plot([0.86, 0.88], [0.975, 0.975], "-k", linewidth=2)
-ax.text(0.85, 0.97, "Silicates", fontsize=16, horizontalalignment='left')
+ax.plot([0.855, 0.875], [0.978, 0.978], "-k", linewidth=2)
+ax.text(0.88, 0.97, "Silicates", fontsize=16, horizontalalignment='left')
 
-ax.plot([0.86, 0.88], [0.955, 0.955], "-r", linewidth=2)
-ax.text(0.85, 0.95, "Carbonaceous", fontsize=16, horizontalalignment='left')
+ax.plot([0.855, 0.875], [0.958, 0.958], "-r", linewidth=2)
+ax.text(0.88, 0.95, "Carbonaceous", fontsize=16, horizontalalignment='left')
 
 plt.axis('off')
 
@@ -696,19 +698,18 @@ ax.plot(ZZ_sil+0.5, ffzCR_sil, "-k", linewidth=2, drawstyle='steps', alpha=1.0)
 ax.plot(ZZ+0.5, ffzCR, "--r", linewidth=2, drawstyle='steps', alpha=1.0)
 
 
-ax.text(1.0*charges + zmin, 0.8, "$\\langle$Z$\\rangle =%.2f$"%zmean[jj + ii*3], fontsize=14, color='red')
-ax.text(1.0*charges + zmin, 0.7, "$\\sigma_{Z}\'=%.2f$"%zstd[jj + ii*3], fontsize=14, color='red')
+ax.text(0.4*charges + zmin, 0.8, "$\\langle$Z$\\rangle =%.2f$"%zmean[jj + ii*3], fontsize=14, color='red')
+ax.text(0.4*charges + zmin, 0.7, "$\\sigma_{Z}\'=%.2f$"%zstd[jj + ii*3], fontsize=14, color='red')
 
-ax.text(1.0*charges + zmin, 0.5, "$\\langle$Z$\\rangle =%.2f$"%zmean_sil[jj + ii*3], fontsize=14)
-ax.text(1.0*charges + zmin, 0.4, "$\\sigma_{Z}\'=%.2f$"%zstd_sil[jj + ii*3], fontsize=14)
+ax.text(0.4*charges + zmin, 0.5, "$\\langle$Z$\\rangle =%.2f$"%zmean_sil[jj + ii*3], fontsize=14)
+ax.text(0.4*charges + zmin, 0.4, "$\\sigma_{Z}\'=%.2f$"%zstd_sil[jj + ii*3], fontsize=14)
 
-print(1.0*charges + zmin)
+#print(1.*charges + zmin)
+#ax.text(6, 0.8, "$\\langle$Z$\\rangle =%.2f$"%zmean[jj + ii*3], fontsize=14, color='red')
+#ax.text(6, 0.7, "$\\sigma_{Z}\'=%.2f$"%zstd[jj + ii*3], fontsize=14, color='red')
 
-ax.text(6, 0.8, "$\\langle$Z$\\rangle =%.2f$"%zmean[jj + ii*3], fontsize=14, color='red')
-ax.text(6, 0.7, "$\\sigma_{Z}\'=%.2f$"%zstd[jj + ii*3], fontsize=14, color='red')
-
-ax.text(6, 0.5, "$\\langle$Z$\\rangle =%.2f$"%zmean_sil[jj + ii*3], fontsize=14)
-ax.text(6, 0.4, "$\\sigma_{Z}\'=%.2f$"%zstd_sil[jj + ii*3], fontsize=14)
+#ax.text(6, 0.5, "$\\langle$Z$\\rangle =%.2f$"%zmean_sil[jj + ii*3], fontsize=14)
+#ax.text(6, 0.4, "$\\sigma_{Z}\'=%.2f$"%zstd_sil[jj + ii*3], fontsize=14)
 
 
 ax.set_ylim(0, 0.99)
@@ -716,7 +717,7 @@ ax.set_ylim(0, 0.99)
 ax.tick_params(axis='both', which='both', bottom='on', labelbottom='on', labelleft='off')
 ax.tick_params(axis='both', which='major', length=4, width=2, labelsize=12)
 
-ax.set_xlim(-3, 9)
+ax.set_xlim(-1.8, 11)
 
 #fig.show()
 

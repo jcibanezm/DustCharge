@@ -614,8 +614,8 @@ def get_ISRF(hnu, Ntot, G0=1.0):
     u_field_edens = u_field_edens*G0*0.8868078539
 
     #Av  = Ndust*100.0 / 1.8e21
-    tau = Av / 1.086
-    # tau = -2.5*Av # In Walch et al 2015.
+    #tau = Av / 1.086
+    tau = 2.5*Av # In Walch et al 2015.
 
     u_field_edens = u_field_edens * np.exp(-tau)
 
@@ -662,8 +662,8 @@ def ISRF_nu(nu_here, Ntot, G0=1.0):
             u_field_edens = unu / nu_here
     # The constant 0.8868078539 is because this ISRF gives a G0=1.12 so I have to scale it to get a G0=1.0
     u_field_edens = u_field_edens*G0*0.8868078539
-    tau           = Av / 1.086
-    # tau = -2.5*Av # Dust absorption (van Dishoeck & Black 1988)
+    #tau           = Av / 1.086
+    tau = 2.5*Av # Dust absorption (van Dishoeck & Black 1988)
 
     u_field_edens = u_field_edens * np.exp(-tau)
 
@@ -1187,8 +1187,8 @@ def Jrate_pe_CR(zeta, asize, Z, grain_type, Qabs):
 
     omega = 0.5       # dust albedo
     Rv    = 3.1       # Slope of the extinction curve
-    #NH2_mag = 1.87e21 # Typical dust to extinction ratio.(Bohlin, Savage & Drake 1978)
-    NH2_mag = 1.0e21 # Typical dust to extinction ratio.(Bohlin, Savage & Drake 1978)
+    NH2_mag = 1.87e21 # Typical dust to extinction ratio.(Bohlin, Savage & Drake 1978)
+    #NH2_mag = 1.0e21 # Typical dust to extinction ratio.(Bohlin, Savage & Drake 1978)
 
     FUV = 960. * (1. / (1.-omega))* (NH2_mag / 1.0e21) * (Rv/3.2)**1.5 * (zeta / 1.0e-17)
 
@@ -2229,7 +2229,7 @@ def get_avgYieldQabs(Qabs, asize, Z, grain_type):
 
     return YieldQabs
 
-def get_zeta(Ntot, model="high"):
+def get_zeta(NH2, model="high"):
     """
     Get the local cosmic ray flux from the H2 column density and the CR flux models
     Polynomial fit in Appendix F in Padovani et al 2018.
@@ -2254,11 +2254,11 @@ def get_zeta(Ntot, model="high"):
         print("Cosmic Ray ionization rate models available are 'high' and 'low'")
 
     for kk in range(10):
-        zeta  += K[kk]*np.power(np.log10(Ntot), kk)
+        zeta  += K[kk]*np.power(np.log10(NH2), kk)
 
     zeta = np.power(10, zeta)
 
-    if Ntot < 1.0e18:
+    if NH2 < 1.0e18:
         zeta = 0.0
 
     return zeta
