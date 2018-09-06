@@ -9,6 +9,8 @@ xH2        = np.array( [4.6e-5, 0.032, 0.9986])
 Av         = np.array( [0.046, 0.079, 10.0])
 fH2shield  = np.array( [0.11, 0.00057, 7.0e-8])
 
+Ntot = Av * 1.87e21
+
 # fH2shield is a value from Flash simulations related to the nH2 column density.
 # I should use a normal NH2 input for the code release.
 
@@ -16,7 +18,7 @@ fH2shield  = np.array( [0.11, 0.00057, 7.0e-8])
 xC = 2.95e-4
 nC = nH*xC
 
-GG = [fz.get_G(Av[0], G0=1.7), fz.get_G(Av[1], G0=1.7), fz.get_G(Av[2], G0=1.7)]
+GG = [fz.get_G(Ntot[0], G0=1.7), fz.get_G(Ntot[1], G0=1.7), fz.get_G(Ntot[2], G0=1.7)]
 
 print("---------------------------------------------------------------------------")
 print(" Local environment properties:")
@@ -27,7 +29,7 @@ print("G:     %.2f         %.2f         %.2g"%(GG[0], GG[1], GG[2]))
 print("xe:    %.2g        %.2g      %.1g" %(xe[0], xe[1], xe[2]))
 print("xH2:   %.2g      %.2g        %.4g" %(xH2[0], xH2[1], xH2[2]))
 print("Av:    %.2g        %.2g      %.1g" %(Av[0], Av[1], Av[2]))
-print("fH2:    %.2g        %.2g      %.1g" %(fH2shield[0], fH2shield[1], fH2shield[2]))
+print("Ntot:   %.2g        %.2g      %.1g" %(Ntot[0], Ntot[1], Ntot[2]))
 
 
 grain_type = "carbonaceous"
@@ -57,14 +59,16 @@ for kk in range(3):
 
         # Get the CR ionization rate given the Column density.
         # Update to the total column density instead of the weird Flash function.
-        zeta = fz.get_zeta(fH2shield[ii])
+        zeta = fz.get_zeta(Ntot[ii])
 
         ############################################################################################
         # Run the charge distribution calculation!!!
-        Jpe, Je, Jh, Jc, ZZall = fz.compute_currents ([nH[ii], nC[ii]], [xe[ii], 0.0], xH2[ii], temp[ii], zeta, grain_size[kk], Av[ii], grain_type, Qabs[kk], G0=G0)
-        JCRe, JCRpe, ZZnew     = fz.compute_CR_currents(nH[ii], fH2shield[ii], zeta, grain_size[kk], grain_type, Qabs[kk])
+        Jpe, Je, Jh, Jc, ZZall = fz.compute_currents ([nH[ii], nC[ii]], [xe[ii], 0.0], xH2[ii], temp[ii], zeta, grain_size[kk], Ntot[ii], grain_type, Qabs[kk], G0=G0)
+        JCRe, JCRpe, ZZnew     = fz.compute_CR_currents(nH[ii], zeta, grain_size[kk], grain_type, Qabs[kk])
         zeq                    = fz.get_zeq_vec      (Jpe, Je, Jh, Jc, ZZall, grain_size[kk], grain_type)
-        new_zmin, new_zmax     = fz.get_new_zmin_zmax([nH[ii], nC[ii]], [xe[ii], 0.0], temp[ii], grain_size[kk], Av[ii], grain_type, Qabs[kk], zeq=zeq, G0=G0)
+        new_zmin, new_zmax     = fz.get_new_zmin_zmax([nH[ii], nC[ii]], [xe[ii], 0.0], temp[ii], grain_size[kk], Ntot[ii], grain_type, Qabs[kk], zeta, zeq=zeq, G0=G0)
+
+        #new_zmax +=5
 
         ffzCR, ZZ              = fz.vector_fz        (Jpe, Je, Jh, Jc, JCRe, JCRpe, ZZall, new_zmin, new_zmax, includeCR=True)
 
@@ -110,14 +114,14 @@ for kk in range(3):
 
         # Get the CR ionization rate given the Column density.
         # Update to the total column density instead of the weird Flash function.
-        zeta = fz.get_zeta(fH2shield[ii])
+        zeta = fz.get_zeta(Ntot[ii])
 
         ############################################################################################
         # Run the charge distribution calculation!!!
-        Jpe, Je, Jh, Jc, ZZall = fz.compute_currents ([nH[ii], nC[ii]], [xe[ii], 0.0], xH2[ii], temp[ii], zeta, grain_size[kk], Av[ii], grain_type, Qabs[kk], G0=G0)
-        JCRe, JCRpe, ZZnew     = fz.compute_CR_currents(nH[ii], fH2shield[ii], zeta, grain_size[kk], grain_type, Qabs[kk])
+        Jpe, Je, Jh, Jc, ZZall = fz.compute_currents ([nH[ii], nC[ii]], [xe[ii], 0.0], xH2[ii], temp[ii], zeta, grain_size[kk], Ntot[ii], grain_type, Qabs[kk], G0=G0)
+        JCRe, JCRpe, ZZnew     = fz.compute_CR_currents(nH[ii], zeta, grain_size[kk], grain_type, Qabs[kk])
         zeq                    = fz.get_zeq_vec      (Jpe, Je, Jh, Jc, ZZall, grain_size[kk], grain_type)
-        new_zmin, new_zmax     = fz.get_new_zmin_zmax([nH[ii], nC[ii]], [xe[ii], 0.0], temp[ii], grain_size[kk], Av[ii], grain_type, Qabs[kk], zeq=zeq, G0=G0)
+        new_zmin, new_zmax     = fz.get_new_zmin_zmax([nH[ii], nC[ii]], [xe[ii], 0.0], temp[ii], grain_size[kk], Ntot[ii], grain_type, Qabs[kk], zeta, zeq=zeq, G0=G0)
 
         ffzCR, ZZ              = fz.vector_fz        (Jpe, Je, Jh, Jc, JCRe, JCRpe, ZZall, new_zmin, new_zmax, includeCR=True)
 
@@ -170,6 +174,12 @@ ax.text(0.74, 0.955,"100 $\\AA$", fontsize=20, horizontalalignment='center')
 ax.text(0.94, 0.15, "Warm\nNeutral\nMedium", fontsize=20, horizontalalignment='center')
 ax.text(0.94, 0.45, "Cold\nNeutral\nMedium", fontsize=20, horizontalalignment='center')
 ax.text(0.94, 0.75,"Cold\nMolecular\nMedium", fontsize=20, horizontalalignment='center')
+
+ax.plot([0.86, 0.88], [0.975, 0.975], "-k", linewidth=2)
+ax.text(0.85, 0.97, "Silicates", fontsize=16, horizontalalignment='left')
+
+ax.plot([0.86, 0.88], [0.955, 0.955], "-r", linewidth=2)
+ax.text(0.85, 0.95, "Carbonaceous", fontsize=16, horizontalalignment='left')
 
 plt.axis('off')
 
@@ -357,7 +367,7 @@ ax.tick_params(axis='both', which='major', length=4, width=2, labelsize=12)
 
 
 ############################################################################################################
-############################                100 Angstroms            #######################################
+############################                50 Angstroms            #######################################
 ############################################################################################################
 
 #------------------------------------------------------------------------------------------------
@@ -532,7 +542,7 @@ ax.tick_params(axis='both', which='major', length=4, width=2, labelsize=12)
 
 
 ############################################################################################################
-############################               1000 Angstroms            #######################################
+############################               100 Angstroms            #######################################
 ############################################################################################################
 
 #------------------------------------------------------------------------------------------------
@@ -691,6 +701,15 @@ ax.text(1.0*charges + zmin, 0.7, "$\\sigma_{Z}\'=%.2f$"%zstd[jj + ii*3], fontsiz
 
 ax.text(1.0*charges + zmin, 0.5, "$\\langle$Z$\\rangle =%.2f$"%zmean_sil[jj + ii*3], fontsize=14)
 ax.text(1.0*charges + zmin, 0.4, "$\\sigma_{Z}\'=%.2f$"%zstd_sil[jj + ii*3], fontsize=14)
+
+print(1.0*charges + zmin)
+
+ax.text(6, 0.8, "$\\langle$Z$\\rangle =%.2f$"%zmean[jj + ii*3], fontsize=14, color='red')
+ax.text(6, 0.7, "$\\sigma_{Z}\'=%.2f$"%zstd[jj + ii*3], fontsize=14, color='red')
+
+ax.text(6, 0.5, "$\\langle$Z$\\rangle =%.2f$"%zmean_sil[jj + ii*3], fontsize=14)
+ax.text(6, 0.4, "$\\sigma_{Z}\'=%.2f$"%zstd_sil[jj + ii*3], fontsize=14)
+
 
 ax.set_ylim(0, 0.99)
 

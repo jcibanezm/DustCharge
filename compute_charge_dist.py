@@ -438,7 +438,7 @@ def get_y1(hnu, asize, grain_type):
         #ref_index = get_Im_RefIndex_Silicates(hnu)
         #la        =  wavelength / (4.0*math.pi*ref_index)
         # Bakes and Tielens 1994 use a constant factor of 100 AA, for the photoatenuation length, motivated from data by
-        # Pope & Sqinberg 1982.
+        # Pope & Swenberg 1982.
         la = 100.0
 
 
@@ -568,12 +568,12 @@ def get_u_BB(hnu, T):
 
     return u
 
-def get_ISRF(hnu, Av, G0=1.0):
+def get_ISRF(hnu, Ntot, G0=1.0):
     """
     Get the radiation field energy density at a given energy.  Spectrum estimated by Mezger, Mathis & Panagia (1982) and Matiz, Mezger & Panagia (1983).
     Parameters:
         hnu in eV
-        Av: local extinction.
+        Ntot: total hydrogen column density, Ntot = NH+ + NH + 2NH2
 
     returns: u_nu in erg cm-3 s.
     """
@@ -581,6 +581,8 @@ def get_ISRF(hnu, Av, G0=1.0):
     import numpy as np
 
     nu_here = hnu / hplanck
+
+    Av = Ntot / (1.87e21) #Relation of Av to the total hydrogen column density N H,tot (Bohlin, Savage & Drake 1978)
 
     if hnu > 13.6:
         unu = 0.
@@ -613,26 +615,29 @@ def get_ISRF(hnu, Av, G0=1.0):
 
     #Av  = Ndust*100.0 / 1.8e21
     tau = Av / 1.086
+    # tau = -2.5*Av # In Walch et al 2015.
 
     u_field_edens = u_field_edens * np.exp(-tau)
 
-    del nu_here, unu, Av, tau
     return u_field_edens
 
 
-def ISRF_nu(nu_here, Av, G0=1.0):
+def ISRF_nu(nu_here, Ntot, G0=1.0):
     """
     Get the radiation field energy density at a given energy.  Spectrum estimated by Mezger, Mathis & Panagia (1982) and Matiz, Mezger & Panagia (1983).
     Parameters:
         nu in frequency
-        Av: local extinction.
+        Ntot: total hydrogen column density.
         G0: Scaling of the radiation field.
 
     returns: u_nu in erg cm-3 s.
     """
     import math
     import numpy as np
+
     hnu = nu_here*hplanck
+    Av = Ntot / (1.87e21) #Relation of Av to the total hydrogen column density N H,tot (Bohlin, Savage & Drake 1978)
+
     if hnu > 13.6:
         unu = 0.
     elif 11.2 < hnu <= 13.6:
@@ -658,8 +663,10 @@ def ISRF_nu(nu_here, Av, G0=1.0):
     # The constant 0.8868078539 is because this ISRF gives a G0=1.12 so I have to scale it to get a G0=1.0
     u_field_edens = u_field_edens*G0*0.8868078539
     tau           = Av / 1.086
+    # tau = -2.5*Av # Dust absorption (van Dishoeck & Black 1988)
+
     u_field_edens = u_field_edens * np.exp(-tau)
-    del nu_here, unu, Av, tau
+
     return u_field_edens
 
 def get_G0(G0=1.0):
@@ -687,14 +694,14 @@ def get_G0(G0=1.0):
     del nu_min, nu_max, u_here, u_Hab
     return G_here
 
-def get_G(Av, G0=1.0):
+def get_G(Ntot, G0=1.0):
     """
     Calculate the ratiation field in units of Habing fields.
     For a given G0 and Extinction.
 
     Parameters:
         G0 : how I want to scale Mathis et al (1983) ISRF
-        Av : Local extinction.
+        Ntot : total hydrogen column density.
 
     Returns:
         G in units of Habing field.
@@ -704,7 +711,7 @@ def get_G(Av, G0=1.0):
     nu_min = 6.0 /hplanck
     nu_max = 13.6/hplanck
 
-    U_here = integrate.quad(ISRF_nu, nu_min, nu_max, args=(Av, G0))
+    U_here = integrate.quad(ISRF_nu, nu_min, nu_max, args=(Ntot, G0))
 
     # ergs cm-3
     u_Hab = 5.33e-14
@@ -752,7 +759,7 @@ def get_sigma_pdt(hnu, asize, Z, grain_type):
     return sigma
 
 
-def get_YQcu_hnu(nu, asize, Z, grain_type, Ndust, Qabs, G0=1.0):
+def get_YQcu_hnu(nu, asize, Z, grain_type, Ntot, Qabs, G0=1.0):
     """
     Get the product inside the integral.
 
@@ -786,7 +793,7 @@ def get_YQcu_hnu(nu, asize, Z, grain_type, Ndust, Qabs, G0=1.0):
 
     #print("Qabs = %.3f, Qabs_nu = %.3f"%(Qabs_basic, Qabs_nu))
 
-    u_nu  = get_ISRF(hnu, Ndust, G0)
+    u_nu  = get_ISRF(hnu, Ntot, G0)
 
     YQcu_hnu = Yield * Qabs_nu * clight * u_nu / (1.0*hnu) * ergtoeV / cmtoAA**2
     #YQcu_hnu = Yield * Qabs * clight * u_nu / (1.0*hnu) * ergtoeV / cmtoAA**2
@@ -828,7 +835,7 @@ def get_YQnu(nu, asize, Z, grain_type, Qabs):
     return YQnu
 
 
-def get_pdt_factor(nu, asize, Z, grain_type, Ndust, G0=1.0):
+def get_pdt_factor(nu, asize, Z, grain_type, Ntot, G0=1.0):
     """
     get the photodetachment rate factor inside the integral.
     """
@@ -836,7 +843,7 @@ def get_pdt_factor(nu, asize, Z, grain_type, Ndust, G0=1.0):
 
     hnu = nu*hplanck
 
-    u_nu  = get_ISRF(hnu, Ndust, G0)
+    u_nu  = get_ISRF(hnu, Ntot, G0)
 
     sigma_pdt  = get_sigma_pdt(hnu, asize, Z, grain_type)
 
@@ -847,7 +854,7 @@ def get_pdt_factor(nu, asize, Z, grain_type, Ndust, G0=1.0):
 
     return pdt_factor
 
-def basic_integral(func, nu_low, nu_up, asize, Z, grain_type, Ndust, G0, N=100):
+def basic_integral(func, nu_low, nu_up, asize, Z, grain_type, Ntot, G0, N=100):
     """
     Calculate the integral.
     """
@@ -857,7 +864,7 @@ def basic_integral(func, nu_low, nu_up, asize, Z, grain_type, Ndust, G0, N=100):
     fx   = np.array(np.zeros_like(nu))
 
     for ii in range(N):
-        fx[ii] = func(nu[ii], asize, Z, grain_type, Ndust, G0)
+        fx[ii] = func(nu[ii], asize, Z, grain_type, Ntot, G0)
         #fx   = f(nu, asize, Z, grain_type, Ndust, G0)
 
     area = np.sum(fx)*(nu_up-nu_low)/N
@@ -866,7 +873,7 @@ def basic_integral(func, nu_low, nu_up, asize, Z, grain_type, Ndust, G0, N=100):
     return area
 
 #@profile
-def Jrate_pe_test(asize, Z, grain_type, Ndust, Qabs, G0=1.0):
+def Jrate_pe_test(asize, Z, grain_type, Ntot, Qabs, G0=1.0):
     """
     Calculate the photo emission rate given,
     Parameters:
@@ -894,7 +901,7 @@ def Jrate_pe_test(asize, Z, grain_type, Ndust, Qabs, G0=1.0):
     else:
         for i in range(1):
             # Integrate the photoemission from dust grains.
-            Jpe_pet = integrate.quad(get_YQcu_hnu, nu_low, nu_up, args=(asize, Z, grain_type, Ndust, Qabs, G0))[0]
+            Jpe_pet = integrate.quad(get_YQcu_hnu, nu_low, nu_up, args=(asize, Z, grain_type, Ntot, Qabs, G0))[0]
             #Jpe_pet = basic_integral(get_YQcu_hnu, nu_low, nu_up, asize, Z, grain_type, Ndust, G0)
 
         # Run the  photodetachment rate.
@@ -908,7 +915,7 @@ def Jrate_pe_test(asize, Z, grain_type, Ndust, Qabs, G0=1.0):
                 Jpe_pdt = 0
             else:
                 #for i in range(1000):
-                Jpe_pdt = integrate.quad(get_pdt_factor, nu_pdt_low, nu_up, args=(asize, Z, grain_type, Ndust, G0))[0]
+                Jpe_pdt = integrate.quad(get_pdt_factor, nu_pdt_low, nu_up, args=(asize, Z, grain_type, Ntot, G0))[0]
                 #Jpe_pdt = basic_integral(get_pdt_factor, nu_pdt_low, nu_up, asize, Z, grain_type, Ndust, G0)
 
                 Jpe = pia2 * Jpe_pet + Jpe_pdt
@@ -920,13 +927,16 @@ def Jrate_pe_test(asize, Z, grain_type, Ndust, Qabs, G0=1.0):
     return Jpe
 
 
-def Jrate_pe(asize, Z, grain_type, Ndust, Qabs, G0=1.0):
+def Jrate_pe(asize, Z, grain_type, Ntot, Qabs, G0=1.0):
     """
     Calculate the photo emission rate given,
     Parameters:
         asize:     dust grain size in Amstrongs.
         Z:         grain charge
         grain_type: carbonaceous or silicate dust.
+        Ntot: Total hydrogen column density
+        Qabs: Absorption efficiency table for the appropriate grain size and type.
+        G0: Scaling of the Mathis, Mezger radiation field.
 
     returns:
         Jpe:  Rate at which electrons are detached from the grain surface by photons.
@@ -950,7 +960,7 @@ def Jrate_pe(asize, Z, grain_type, Ndust, Qabs, G0=1.0):
         Jpe_pet = 0.
     else:
         # Integrate the photoemission from dust grains.
-        Jpe_pet = integrate.quad(get_YQcu_hnu, nu_low, nu_up, args=(asize, Z, grain_type, Ndust, Qabs, G0))[0]
+        Jpe_pet = integrate.quad(get_YQcu_hnu, nu_low, nu_up, args=(asize, Z, grain_type, Ntot, Qabs, G0))[0]
         #Jpe_pet = basic_integral(get_YQcu_hnu, nu_low, nu_up, asize, Z, grain_type, Ndust, G0)
 
     # Run the  photodetachment rate.
@@ -963,7 +973,7 @@ def Jrate_pe(asize, Z, grain_type, Ndust, Qabs, G0=1.0):
         if hnu_pdt_low > hnu_up:
             Jpe_pdt = 0
         else:
-            Jpe_pdt = integrate.quad(get_pdt_factor, nu_pdt_low, nu_up, args=(asize, Z, grain_type, Ndust, G0))[0]
+            Jpe_pdt = integrate.quad(get_pdt_factor, nu_pdt_low, nu_up, args=(asize, Z, grain_type, Ntot, G0))[0]
             #Jpe_pdt = basic_integral(get_pdt_factor, nu_pdt_low, nu_up, asize, Z, grain_type, Ndust, G0)
 
     Jpe = pia2 * Jpe_pet + Jpe_pdt
@@ -972,13 +982,15 @@ def Jrate_pe(asize, Z, grain_type, Ndust, Qabs, G0=1.0):
 
     return Jpe
 
-def Jrate_pe_pdt(asize, Z, grain_type, Ndust, G0=1.0):
+def Jrate_pe_pdt(asize, Z, grain_type, Ntot, G0=1.0):
     """
     Calculate the photo emission rate given,
     Parameters:
         asize:     dust grain size in Amstrongs.
         Z:         grain charge
         grain_type: carbonaceous or silicate dust.
+        Ntot: Total hydrogen column density
+        G0: scaling of the radiation field, units of Habing field.
 
     returns:
         Jpe:  Rate at which electrons are detached from the grain surface by photons.
@@ -1002,7 +1014,7 @@ def Jrate_pe_pdt(asize, Z, grain_type, Ndust, G0=1.0):
         if hnu_pdt_low > hnu_up:
             Jpe_pdt = 0
         else:
-            Jpe_pdt = integrate.quad(get_pdt_factor, nu_pdt_low, nu_up, args=(asize, Z, grain_type, Ndust, G0))[0]
+            Jpe_pdt = integrate.quad(get_pdt_factor, nu_pdt_low, nu_up, args=(asize, Z, grain_type, Ntot, G0))[0]
             #Jpe_pdt = basic_integral(get_pdt_factor, nu_pdt_low, nu_up, asize, Z, grain_type, Ndust, G0)
 
     Jpe = Jpe_pdt
@@ -1152,20 +1164,31 @@ def Jrate_CR(nH2, asize, Z, grain_type, zeta=1.0e-17):
 
     return J_CR
 
-def Jrate_pe_CR(NH2, zeta, asize, Z, grain_type, Qabs):
+def Jrate_pe_CR(zeta, asize, Z, grain_type, Qabs):
     """
     Calculate the photoelectric heating rate prduce by phosphorecense of
     molecular hydrogen due to secondary electros resuting from cosmic ray
     ionization of hydrogen.
+
+    Parameters:
+        zeta: CR ionization rate
+        asize: grain size
+        Z: grain charges
+        grain_type: carbonaceous or silicate
+        Qabs: absorption efficiency table.
+
+    Returns:
+        Charging rate by CR-induced photons. Units = s^-1.
     """
 
     import math
 
     pia2 = math.pi*asize**2
 
-    omega = 0.5     # dust albedo
-    Rv    = 3.1     # Slope of the extinction curve
-    NH2_mag = 1.0e21# Typical dust to extinction ratio.
+    omega = 0.5       # dust albedo
+    Rv    = 3.1       # Slope of the extinction curve
+    #NH2_mag = 1.87e21 # Typical dust to extinction ratio.(Bohlin, Savage & Drake 1978)
+    NH2_mag = 1.0e21 # Typical dust to extinction ratio.(Bohlin, Savage & Drake 1978)
 
     FUV = 960. * (1. / (1.-omega))* (NH2_mag / 1.0e21) * (Rv/3.2)**1.5 * (zeta / 1.0e-17)
 
@@ -1179,7 +1202,7 @@ def Jrate_pe_CR(NH2, zeta, asize, Z, grain_type, Qabs):
     return Jpe_CR
 
 
-def get_zeq(numdens, xp, T, asize, Ndust, grain_type, Qabs, G0=1.0):
+def get_zeq(numdens, xp, T, asize, Ntot, grain_type, Qabs, G0=1.0):
     """
     Compute the equilibrium charge.
     """
@@ -1205,7 +1228,7 @@ def get_zeq(numdens, xp, T, asize, Ndust, grain_type, Qabs, G0=1.0):
     while gotZeq == False:
 
         # Compute the currents at the lower charge.
-        JPE  = Jrate_pe(asize, zlow, grain_type, Ndust, Qabs, G0=G0)
+        JPE  = Jrate_pe(asize, zlow, grain_type, Ntot, Qabs, G0=G0)
         JE   = Jrate   (zlow, ne, 1.0, T, asize,'electron', grain_type)
 
         JH   = Jrate   (zlow, nH, xHp, T, asize,'hydrogen', grain_type)
@@ -1217,7 +1240,7 @@ def get_zeq(numdens, xp, T, asize, Ndust, grain_type, Qabs, G0=1.0):
         flow = JPE + JION - JE
 
         # Compute the currents at the upper end charge.
-        JPE  = Jrate_pe(asize, zup, grain_type, Ndust, Qabs, G0=G0)
+        JPE  = Jrate_pe(asize, zup, grain_type, Ntot, Qabs, G0=G0)
 
         JE   = Jrate   (zup, ne, 1.0, T, asize,'electron', grain_type)
 
@@ -1246,7 +1269,7 @@ def get_zeq(numdens, xp, T, asize, Ndust, grain_type, Qabs, G0=1.0):
         zmiddle = 0.5 * (zup + zlow)
 
         # Compute the currents at the upper end charge.
-        JPE  = Jrate_pe(asize, zmiddle, grain_type, Ndust, Qabs, G0=G0)
+        JPE  = Jrate_pe(asize, zmiddle, grain_type, Ntot, Qabs, G0=G0)
 
         JE   = Jrate   (zmiddle, ne, 1.0, T, asize,'electron', grain_type)
 
@@ -1343,7 +1366,7 @@ def get_zeq_vec(Jpe, Je, Jh, Jc, ZZ, asize, grain_type):
     return zeq
 
 
-def compute_currents(numdens, xp, xH2, T, zeta, asize, Ndust, grain_type, Qabs, mu=1.0, zmin='default', zmax='default', G0=1.0, includeCR=False):
+def compute_currents(numdens, xp, xH2, T, zeta, asize, Ntot, grain_type, Qabs, mu=1.0, zmin='default', zmax='default', G0=1.0, includeCR=False):
     """
     Compute the currents from photoelectric ejection of electrons, and sticking collisions from ions and electrons.
     Return arrays of Jpe, Jion, Je for all charges between zmin and zmax.
@@ -1413,7 +1436,7 @@ def compute_currents(numdens, xp, xH2, T, zeta, asize, Ndust, grain_type, Qabs, 
 
     for ii in range(zitts):
         zhere = zmin + ii
-        JPE[ii]  = Jrate_pe(asize, zhere, grain_type, Ndust, Qabs, G0=G0)
+        JPE[ii]  = Jrate_pe(asize, zhere, grain_type, Ntot, Qabs, G0=G0)
         JE[ii]   = Jrate   (zhere, ne, 1.0, T, asize,'electron', grain_type)
         JH[ii]   = Jrate   (zhere, nH, xHp, T, asize,'hydrogen', grain_type)
         JC[ii]   = Jrate   (zhere, nC, xCp, T, asize,'carbon',   grain_type)
@@ -1425,13 +1448,12 @@ def get_f2shield(x):
     f2s = 0.965 / (1. + x / 5e14)**2 + 0.35 / np.sqrt(1. + x / 5e14)*np.exp(-8.5e-4*np.sqrt(1.+x / 5e14))
     return f2s
 
-def compute_CR_currents(numdens, fH2shield, zeta, asize, grain_type, Qabs, zmin="default", zmax="default"):
-
-    from pynverse import inversefunc
-
-    NH2_func = inversefunc(get_f2shield)
-
-    NH2 = NH2_func(fH2shield)
+def compute_CR_currents(numdens, zeta, asize, grain_type, Qabs, zmin="default", zmax="default"):
+    """
+    Compute the charging rates by CR induced effects.
+    This one computes the CR-induced photoelectric charging.
+    Collisions with electrons is already taken into account in the normal currents.
+    """
 
     if zmin == 'default':
         zmin = int(get_Zmin(asize, grain_type))
@@ -1453,12 +1475,12 @@ def compute_CR_currents(numdens, fH2shield, zeta, asize, grain_type, Qabs, zmin=
     for ii in range(zitts):
         zhere = zmin + ii
         JCRe[ii]    = Jrate_CR   (numdens, asize, zhere, grain_type)
-        JCRpe[ii]   = Jrate_pe_CR(NH2, zeta, asize, zhere, grain_type, Qabs)
+        JCRpe[ii]   = Jrate_pe_CR(zeta, asize, zhere, grain_type, Qabs)
         ZZ[ii]      = zhere
 
     return JCRe, JCRpe, ZZ
 
-def compute_fhere(numdens, xp, T, asize, Ndust, grain_type, Z, Qabs, G0=1.0):
+def compute_fhere(numdens, xp, T, asize, Ntot, grain_type, Z, Qabs, zeta, G0=1.0):
     """
     Compute the distribution function for a given charge Z.
     """
@@ -1488,7 +1510,7 @@ def compute_fhere(numdens, xp, T, asize, Ndust, grain_type, Z, Qabs, G0=1.0):
         #else:
         for itt in range(int(math.floor(Z))):
             zprime = itt + 1
-            JPE  = Jrate_pe(asize, zprime-1, grain_type, Ndust, Qabs, G0=G0)
+            JPE  = Jrate_pe(asize, zprime-1, grain_type, Ntot, Qabs, G0=G0)
             #JION = Jrate(zprime-1, n, xe, T, mu*mp, asize,'ion',      grain_type)
             JE   = Jrate   (zprime, ne, 1.0, T, asize,'electron', grain_type)
 
@@ -1498,6 +1520,8 @@ def compute_fhere(numdens, xp, T, asize, Ndust, grain_type, Z, Qabs, G0=1.0):
             #JSi  = Jrate   (zprime-1, n, xe, T, asize,'silicon',  grain_type)
             #JS   = Jrate   (zprime-1, n, xe, T, asize,'sulfur',   grain_type)
 
+            JPE_CR = Jrate_pe_CR(zeta, asize, zprime-1, grain_type, Qabs)
+
             #JION = JH + JC + JMg + JSi + JS
             JION = JH + JC
 
@@ -1506,7 +1530,7 @@ def compute_fhere(numdens, xp, T, asize, Ndust, grain_type, Z, Qabs, G0=1.0):
             if((JPE + JION) == 0.0):
                 print ("!! Warning: Jpe + Jion = 0 while computing f_here (Z>0)")
 
-            fhere = (JPE + JION) / JE
+            fhere = (JPE + JION + JPE_CR) / JE
             fz = fz*fhere
 
     elif Z < 0:
@@ -1515,12 +1539,14 @@ def compute_fhere(numdens, xp, T, asize, Ndust, grain_type, Z, Qabs, G0=1.0):
             zprime = Z + itt
             #print("running negative itteration, Zprime=%i"%zprime)
 
-            JPE  = Jrate_pe(asize, zprime, grain_type, Ndust, Qabs, G0=G0)
+            JPE  = Jrate_pe(asize, zprime, grain_type, Ntot, Qabs, G0=G0)
 
             JE   = Jrate   (zprime, ne, 1.0, T, asize,'electron', grain_type)
 
-            JH   = Jrate   (zprime-1, nH, xHp, T, asize,'hydrogen', grain_type)
-            JC   = Jrate   (zprime-1, nC, xCp, T, asize,'carbon',   grain_type)
+            JH   = Jrate   (zprime, nH, xHp, T, asize,'hydrogen', grain_type)
+            JC   = Jrate   (zprime, nC, xCp, T, asize,'carbon',   grain_type)
+
+            JPE_CR = Jrate_pe_CR(zeta, asize, zprime, grain_type, Qabs)
 
             #JION = Jrate(zprime,   n, xe, T, mu*mp,  asize,'ion',      grain_type)
             #JE   = Jrate   (zprime+1, n, xe, T, asize,'electron', grain_type)
@@ -1539,7 +1565,7 @@ def compute_fhere(numdens, xp, T, asize, Ndust, grain_type, Z, Qabs, G0=1.0):
             if((JPE + JION) == 0.0):
                 print ("!! Warning: dividing by 0 while computing f_here !! (Z<0)")
 
-            fhere = JE / (JPE + JION)
+            fhere = JE / (JPE + JION + JPE_CR)
             fz = fz*fhere
 
     if Z!=0:
@@ -1632,7 +1658,7 @@ def fhere_vec(Jpe, Je, Jh, Jc, JCRe, JCRpe, ZZ, zhere, includeCR=False):
     return fz
 
 
-def get_new_zmin_zmax(numdens, xp, T, asize, Ndust, grain_type, Qabs, G0=1.0, zeq=False, includeCR=False):
+def get_new_zmin_zmax(numdens, xp, T, asize, Ntot, grain_type, Qabs, zeta, G0=1.0, zeq=False, includeCR=False):
     """
     Something Zmin and Zmax are crazy large. And computing the charge distribution function has to loop over the (|zmin| + |zmax|)^2.
     I need a way to speed things up.
@@ -1650,13 +1676,13 @@ def get_new_zmin_zmax(numdens, xp, T, asize, Ndust, grain_type, Qabs, G0=1.0, ze
 
     # get the equilibrium charge for this case.
     if zeq == False:
-        zeq = get_zeq([nH, nC], [xHp, xCp], T, asize, Ndust, grain_type, Qabs, G0=G0)
+        zeq = get_zeq([nH, nC], [xHp, xCp], T, asize, Ntot, grain_type, Qabs, G0=G0)
 
     #print("Equilibrium charge <Z> = %.1f" %zeq)
     zeq = int(math.floor(zeq))
 
     # What is the charge probability distribution for the equilibrium charge.
-    f_mean = compute_fhere([nH, nC], [xHp, xCp], T, asize, Ndust, grain_type, zeq, Qabs, G0=G0)
+    f_mean = compute_fhere([nH, nC], [xHp, xCp], T, asize, Ntot, grain_type, zeq, Qabs, zeta, G0=G0)
 
     # Compute the old minimum and maximum charges possible using equations 22 and 24 from WD01.
     zmin_old = int(get_Zmin(asize, grain_type))
@@ -1680,7 +1706,7 @@ def get_new_zmin_zmax(numdens, xp, T, asize, Ndust, grain_type, Qabs, G0=1.0, ze
 
         while ff > 1.0e-3:
         #while zpp <= 5:
-            f_up        = compute_fhere([nH, nC], [xHp, xCp], T, asize, Ndust, grain_type, zeq+zpp, Qabs, G0=G0)
+            f_up        = compute_fhere([nH, nC], [xHp, xCp], T, asize, Ntot, grain_type, zeq+zpp, Qabs, zeta, G0=G0)
             ff          = f_up / f_mean
             zmax_test   = zeq + zpp
             zpp        += 5
@@ -1715,7 +1741,7 @@ def get_new_zmin_zmax(numdens, xp, T, asize, Ndust, grain_type, Qabs, G0=1.0, ze
         counter = 0
 
         while ff > 1.0e-3:
-            f_down    = compute_fhere([nH, nC], [xHp, xCp], T, asize, Ndust, grain_type, zeq + zmm, Qabs, G0=G0)
+            f_down    = compute_fhere([nH, nC], [xHp, xCp], T, asize, Ntot, grain_type, zeq + zmm, Qabs, zeta, G0=G0)
             ff        = f_down / f_mean
             zmm      += -1
             zmin_test = zeq + zmm
@@ -1852,7 +1878,7 @@ def new_zmin_zmax_vec(Jpe, Je, Jh, Jc, ZZ, zeq):
 
     return Jpe_new, Je_new, Jh_new, Jc_new, ZZ_new, zmin, zmax
 
-def compute_fz_speed(numdens, xp, T, asize, Ndust, grain_type, mu=1.0, zmin='default', zmax='default', G0=1.0):
+def compute_fz_speed(numdens, xp, T, asize, Ntot, grain_type, mu=1.0, zmin='default', zmax='default', G0=1.0):
     """
     Compute the distribution function of grain charges given the local density,
     temperature, dust size, electron fraction and grain type.
@@ -1885,7 +1911,7 @@ def compute_fz_speed(numdens, xp, T, asize, Ndust, grain_type, mu=1.0, zmin='def
     for i in range(zitts):
         zhere     = zmin + i
         charge[i] = zhere
-        fhere     = compute_fhere([nH, nC], [xHp, xCp], T, asize, Ndust, grain_type, zhere, G0=G0)
+        fhere     = compute_fhere([nH, nC], [xHp, xCp], T, asize, Ntot, grain_type, zhere, G0=G0)
         fz[i]     = fhere
         f0        = f0 + fhere
 
@@ -1958,7 +1984,7 @@ def get_Zmode(charges, charge_dist):
 
     return Zmode
 
-def get_tauz(asize, grain_type, numdens, xp, T, Ndust, charge, charge_dist, G0=1.68):
+def get_tauz(asize, grain_type, numdens, xp, T, Ntot, charge, charge_dist, G0=1.68):
     """
     compute the timescale of charge fluctuations.
     """
@@ -1977,7 +2003,7 @@ def get_tauz(asize, grain_type, numdens, xp, T, Ndust, charge, charge_dist, G0=1
 
     for ii in range(len(charge)):
         zhere = charge[ii]
-        JPE  = Jrate_pe(asize, zhere, grain_type, Ndust, G0=G0)
+        JPE  = Jrate_pe(asize, zhere, grain_type, Ntot, G0=G0)
         JE   = Jrate   (zhere, ne, 1.0, T, asize,'electron', grain_type)
         JH   = Jrate   (zhere, nH, xHp, T, asize,'hydrogen', grain_type)
         JC   = Jrate   (zhere, nC, xCp, T, asize,'carbon',   grain_type)
@@ -2203,7 +2229,7 @@ def get_avgYieldQabs(Qabs, asize, Z, grain_type):
 
     return YieldQabs
 
-def get_zeta(fH2shield, model="high"):
+def get_zeta(Ntot, model="high"):
     """
     Get the local cosmic ray flux from the H2 column density and the CR flux models
     Polynomial fit in Appendix F in Padovani et al 2018.
@@ -2213,11 +2239,6 @@ def get_zeta(fH2shield, model="high"):
         model     = Cosmic Ray model, 'low' or 'high' (Check Padovani et al 2018 appendix F for information about this.)
 
     """
-
-    from pynverse import inversefunc
-
-    NH2_func = inversefunc(get_f2shield)
-    NH2      = NH2_func(fH2shield)
 
     kL = [-3.331056497233e6, 1.207744586503e6, -1.913914106234e5, 1.731822350618e4, -9.790557206178e2, 3.543830893824e1, -8.034869454520e-1, 1.048808593086e-2, -6.188760100997e-5, 3.122820990797e-8]
     kH = [ 1.001098610761e7, -4.231294690194e6, 7.921914432011e5, -8.623677095423e4, 6.015889127529e3, -2.789238383353e2, 8.595814402406e0, -1.698029737474e-1, 1.951179287567e-3, -9.937499546711e-6]
@@ -2233,34 +2254,38 @@ def get_zeta(fH2shield, model="high"):
         print("Cosmic Ray ionization rate models available are 'high' and 'low'")
 
     for kk in range(10):
-        zeta  += K[kk]*np.power(np.log10(NH2), kk)
+        zeta  += K[kk]*np.power(np.log10(Ntot), kk)
 
     zeta = np.power(10, zeta)
 
-    if NH2 < 1.0e18:
+    if Ntot < 1.0e18:
         zeta = 0.0
 
     return zeta
 
 
-def get_G_CR(fH2shield, model="high"):
+def get_G_CR(Ntot, model="high"):
     """
     Compute the energy density of the cosmic ray induced ultraviolet radiation field
     in units of the Habing Field.
 
     input:
-        fH2shield = Flash value of H2 shielding factor.
+        Ntot      = Total column density
         model     = Cosmic Ray model, 'low' or 'high' (Check Padovani et al 2018 appendix F for information about this.)
 
     Returns:
         Cosmic Ray induced radiation field in units of Habing Field.
     """
 
-    zeta = get_zeta(fH2shield, model=model)
+    zeta = get_zeta(Ntot, model=model)
 
     FUV_H2 = np.zeros_like(zeta)
 
-    FUV_H2 = 1830. * (zeta/1.0e-17) * 12.4*eVtoerg / clight
+    omega   = 0.5       # dust albedo
+    Rv      = 3.1       # Slope of the extinction curve
+    NH2_mag = 1.87e21 # Typical dust to extinction ratio.(Bohlin, Savage & Drake 1978)
+
+    FUV_H2 = 960. * (1. / (1.-omega))* (NH2_mag / 1.0e21) * (Rv/3.2)**1.5 * (zeta / 1.0e-17) * 12.4*eVtoerg / clight
 
     U_Hab = 5.33e-14
 
