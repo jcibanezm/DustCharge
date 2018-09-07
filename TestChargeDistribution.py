@@ -9,12 +9,13 @@ xe         = np.array( [0.012, 0.00018, 4.2e-10])
 xH2        = np.array( [4.6e-5, 0.032, 0.9986])
 Av         = np.array( [0.046, 0.079, 10.48])
 fH2shield  = np.array( [0.11, 0.00057, 7.0e-8])
-NH2        = np.array( [5.27e+15, 9.12e+19, 2.91e+22])
+NH2        = np.array( [7.9e15, 1.7e+18, 1e+22])
 
 Ntot = Av * 1.87e21
 
-# fH2shield is a value from Flash simulations related to the nH2 column density.
-# I should use a normal NH2 input for the code release.
+#NH2 = np.zeros(3)
+#for i in range(3):
+#    NH2[i] = inversefunc(fz.get_newf2shield, y_values=fH2shield[i], args=(temp[i]))
 
 # Carbon abundance with respect to Hydrogen.
 xC = 2.95e-4
@@ -31,7 +32,8 @@ print("G:     %.2f         %.2f         %.2g"%(GG[0], GG[1], GG[2]))
 print("xe:    %.2g        %.2g      %.1g" %(xe[0], xe[1], xe[2]))
 print("xH2:   %.2g      %.2g        %.4g" %(xH2[0], xH2[1], xH2[2]))
 print("Av:    %.2g        %.2g      %.1g" %(Av[0], Av[1], Av[2]))
-print("Ntot:   %.2g        %.2g      %.1g" %(Ntot[0], Ntot[1], Ntot[2]))
+print("Ntot:   %.2g        %.2g      %.2g" %(Ntot[0], Ntot[1], Ntot[2]))
+print("NH2:    %.2g        %.2g      %.2g" %(NH2[0], NH2[1], NH2[2]))
 
 grain_type = "carbonaceous"
 grain_size = [5, 50, 100]

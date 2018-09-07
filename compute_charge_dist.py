@@ -547,7 +547,6 @@ def get_Yield(hnu, asize, Z, grain_type):
 def get_BB_spec(hnu, T):
     """
     Get the energy density for a black body spectrum at a given energy (hnu), and temperature (T).
-    wfac is the dilution factor given by Mathis et al 1983.
     Parameters:
         hnu in eV
         T in K
@@ -892,60 +891,6 @@ def basic_integral(func, nu_low, nu_up, asize, Z, grain_type, Ntot, G0, N=100):
     del nu, fx
     return area
 
-#@profile
-def Jrate_pe_test(asize, Z, grain_type, Ntot, Qabs, G0=1.0):
-    """
-    Calculate the photo emission rate given,
-    Parameters:
-        asize:     dust grain size in Amstrongs.
-        Z:         grain charge
-        grain_type: carbonaceous or silicate dust.
-
-    returns:
-        Jpe:  Rate at which electrons are detached from the grain surface by photons.
-    """
-    import math
-    import numpy as np
-    from scipy import integrate
-
-    pia2 = math.pi*asize**2
-
-    hnu_low = get_nu_pet(asize, Z, grain_type) * hplanck
-    hnu_up  = 13.6
-
-    nu_low = get_nu_pet(asize, Z, grain_type)
-    nu_up  = 13.6 / hplanck
-
-    if hnu_low > hnu_up:
-        Jpe_pet = 0.
-    else:
-        for i in range(1):
-            # Integrate the photoemission from dust grains.
-            Jpe_pet = integrate.quad(get_YQcu_hnu, nu_low, nu_up, args=(asize, Z, grain_type, Ntot, Qabs, G0))[0]
-            #Jpe_pet = basic_integral(get_YQcu_hnu, nu_low, nu_up, asize, Z, grain_type, Ndust, G0)
-
-        # Run the  photodetachment rate.
-        nu_pdt_low  = get_nu_pdt(asize, Z, grain_type)
-        hnu_pdt_low = nu_pdt_low * hplanck
-
-        if Z >= 0:
-            Jpe_pdt = 0
-        else:
-            if hnu_pdt_low > hnu_up:
-                Jpe_pdt = 0
-            else:
-                #for i in range(1000):
-                Jpe_pdt = integrate.quad(get_pdt_factor, nu_pdt_low, nu_up, args=(asize, Z, grain_type, Ntot, G0))[0]
-                #Jpe_pdt = basic_integral(get_pdt_factor, nu_pdt_low, nu_up, asize, Z, grain_type, Ndust, G0)
-
-                Jpe = pia2 * Jpe_pet + Jpe_pdt
-
-    del pia2, hnu_low, hnu_up, nu_low, nu_up, Jpe_pet, nu_pdt_low, hnu_pdt_low, Jpe_pdt
-    #gc.collect()
-    #gc.collect(generation=2)
-
-    return Jpe
-
 
 def Jrate_pe(asize, Z, grain_type, Ntot, Qabs, G0=1.0):
     """
@@ -1099,13 +1044,14 @@ def get_Zmax(asize, grain_type, hnu_max=13.6):
 
     return Zmax
 
-def CR_xe(nH2, zeta=1.0e-17):
+def CR_xe(nH, xH2, zeta=1.0e-17):
     """
     Given a molecular hydrogen number density, return the density of secondary electrons
     from the Caselli et al 2002 model 3. (Also equation 2 in Ivlev 2015)
     """
 
-    if nH2 > 1.0e2:
+    if nH > 1.0e3:
+        nH2 = nH*xH2
         xe = 6.7e-6*(nH2)**(-0.56)*np.sqrt(zeta/1.0e-17)
     else:
         xe = 0.0
@@ -1150,7 +1096,7 @@ def sec_e_yield(E):
 
     return eYield
 
-def Jrate_CR(nH2, asize, Z, grain_type, zeta=1.0e-17):
+def Jrate_CR(nH, xH2, asize, Z, grain_type, zeta=1.0e-17):
     """
     Calculate the current of electrons/protos resulting from cosmic ray ionization.
 
@@ -1165,7 +1111,7 @@ def Jrate_CR(nH2, asize, Z, grain_type, zeta=1.0e-17):
 
     pia2 = math.pi*asize**2
 
-    xe = CR_xe(nH2, zeta=zeta)
+    xe = CR_xe(nH, xH2, zeta=zeta)
 
     hnu_up = 13.6
     nu_up  = 13.6 / hplanck
@@ -1213,11 +1159,10 @@ def Jrate_pe_CR(zeta, asize, Z, grain_type, Qabs):
     FUV = 960. * (1. / (1.-omega))* (NH2_mag / 1.0e21) * (Rv/3.2)**1.5 * (zeta / 1.0e-17)
 
     yyQabs = get_avgYieldQabs(Qabs, asize, Z, grain_type)
-    #YnuQabs = 0.04
+    #YnuQabs = 0.04 # Constant value used in Ivlev et al 2015.
 
     #Jpe_CR = pia2 * FUV * YnuQabs
     Jpe_CR = pia2 * FUV * yyQabs * AAtocm**2
-    #Jpe_CR = 0
 
     return Jpe_CR
 
@@ -1398,7 +1343,6 @@ def compute_currents(numdens, xp, xH2, T, zeta, asize, Ntot, grain_type, Qabs, m
     xHp = xp[0]
     xCp = xp[1]
 
-
     if isinstance(nH, list):
         #print("I'm running the list")
         for i in range(len(nH)):
@@ -1407,7 +1351,7 @@ def compute_currents(numdens, xp, xH2, T, zeta, asize, Ntot, grain_type, Qabs, m
             # Secondary electrons from CR.
             nH2  = nH[i]*xH2[i]
             if nH > 1.0e3:
-                xeCR = CR_xe(nH2, zeta=zeta[i])
+                xeCR = CR_xe(nH, xH2, zeta=zeta[i])
                 neCR = nH[i]*xeCR
                 # Take the largest electron density of the two.
                 ne = max(ne, neCR)
@@ -1417,7 +1361,7 @@ def compute_currents(numdens, xp, xH2, T, zeta, asize, Ntot, grain_type, Qabs, m
         nH2  = nH*xH2
         #print("H2 number density", nH2)
         if nH > 1.0e3:
-            xeCR = CR_xe(nH2, zeta=zeta)
+            xeCR = CR_xe(nH, xH2, zeta=zeta)
             neCR = nH*xeCR
             #print("Cosmic ray electrons = ", neCR)
             # Take the largest electron density of the two.
@@ -1464,9 +1408,12 @@ def compute_currents(numdens, xp, xH2, T, zeta, asize, Ntot, grain_type, Qabs, m
 
     return JPE, JE, JH, JC, ZZ
 
-def get_f2shield(x):
-    f2s = 0.965 / (1. + x / 5e14)**2 + 0.35 / np.sqrt(1. + x / 5e14)*np.exp(-8.5e-4*np.sqrt(1.+x / 5e14))
+def get_f2shield(x, temp):
+    b = np.sqrt(kb *temp/mH)
+    b5 = b / 1.0e5
+    f2s = 0.965 / (1. + x / 5e14*1./b5)**2 + 0.035 / np.sqrt(1. + x / 5e14)*np.exp(-8.5e-4*np.sqrt(1.+x / 5e14))
     return f2s
+
 
 def compute_CR_currents(numdens, zeta, asize, grain_type, Qabs, zmin="default", zmax="default"):
     """
@@ -1494,7 +1441,7 @@ def compute_CR_currents(numdens, zeta, asize, grain_type, Qabs, zmin="default", 
 
     for ii in range(zitts):
         zhere = zmin + ii
-        JCRe[ii]    = Jrate_CR   (numdens, asize, zhere, grain_type)
+        #JCRe[ii]    = Jrate_CR   (numdens, asize, zhere, grain_type)
         JCRpe[ii]   = Jrate_pe_CR(zeta, asize, zhere, grain_type, Qabs)
         ZZ[ii]      = zhere
 
@@ -2023,7 +1970,7 @@ def get_tauz(asize, grain_type, numdens, xp, T, Ntot, charge, charge_dist, xH2, 
             # Secondary electrons from CR.
             nH2  = nH[i]*xH2[i]
             if nH > 1.0e3:
-                xeCR = CR_xe(nH2, zeta=zeta[i])
+                xeCR = CR_xe(nH, xH2, zeta=zeta[i])
                 neCR = nH[i]*xeCR
                 # Take the largest electron density of the two.
                 ne = max(ne, neCR)
@@ -2033,7 +1980,7 @@ def get_tauz(asize, grain_type, numdens, xp, T, Ntot, charge, charge_dist, xH2, 
         nH2  = nH*xH2
         #print("H2 number density", nH2)
         if nH > 1.0e3:
-            xeCR = CR_xe(nH2, zeta=zeta)
+            xeCR = CR_xe(nH, xH2, zeta=zeta)
             neCR = nH*xeCR
             #print("Cosmic ray electrons = ", neCR)
             # Take the largest electron density of the two.
