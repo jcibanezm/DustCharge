@@ -1415,6 +1415,30 @@ def get_f2shield(x, temp):
     f2s = 0.965 / (1. + x / 5e14*1./b5)**2 + 0.035 / np.sqrt(1. + x / 5e14)*np.exp(-8.5e-4*np.sqrt(1.+x / 5e14))
     return f2s
 
+def compute_new_xe(numdens, xp, xH2, zeta):
+    """
+    Update the electron density and electron fraction for densities above 1000 cm-3.
+    """
+    nH = numdens[0]
+    nC = numdens[1]
+
+    xHp = xp[0]
+    xCp = xp[1]
+
+    #print("I'm running the individual parameters")
+    ne  = nH*xHp + nC*xCp
+    xe  = ne / nH
+
+    #print("H2 number density", nH2)
+    if nH > 1.0e3:
+        xeCR = CR_xe(nH, xH2, zeta=zeta)
+        neCR = nH*xeCR
+        #print("Cosmic ray electrons = ", neCR)
+        # Take the largest electron density of the two.
+        ne = max(ne, neCR)
+        xe = ne / nH
+
+    return ne, xe
 
 def compute_CR_currents(numdens, zeta, asize, grain_type, Qabs, zmin="default", zmax="default"):
     """
