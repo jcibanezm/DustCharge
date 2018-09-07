@@ -5,8 +5,8 @@ import scipy.integrate as integrate
 import gc
 #from memory_profiler import profile
 
-
 print("Loading the library to compute the charge distribution of dust grains.")
+
 
 kb            = 1.38e-16        # erg K-1
 hplanck       = 4.135667662e-15 # eV s
@@ -225,6 +225,29 @@ def get_Emin(asize, Z):
 
     return emin
 
+def get_newEmin(asize, Z):
+    """
+    calculate the energy shift given a tunneling probability of 10^-3 for negatively charged grains.
+    Note: Updated Emin calculation from Weingartner, Draine & Barr 2006. eq. (3).
+    Is it really? or is it commented.
+
+    Parameters:
+        asize in Angstroms.
+        Z in units of proton charge.
+
+    returns: Emin in units of eV.
+    """
+    import numpy as np
+
+
+    if Z >= -1:
+        emin = 0.0
+    else:
+        nu     = 1.0 * abs(Z + 1)
+        theta  = nu / (1.0 + nu**(-0.5))
+        emin   = theta*(1.0 - 0.3*(asize/10.)**(-0.45)*abs(Z+1.)**(-0.26))
+
+    return emin
 def get_IPv(asize, Z, grain_type):
     """
     Calculate the ionization potential of a grain of a given size a, and charge Z.
@@ -250,9 +273,6 @@ def get_IPv(asize, Z, grain_type):
         IPv = W + (Z + 0.5)*echarge**(2)/(asize*AAtocm)*ergtoeV + (Z + 2.)*echarge**(2)/(asize*AAtocm)*0.3/asize*ergtoeV
     else:
         IPv = get_EA(asize, Z+1, grain_type)
-
-    del W
-    #gc.collect(generation=2)
 
     return IPv
 
@@ -1984,7 +2004,7 @@ def get_Zmode(charges, charge_dist):
 
     return Zmode
 
-def get_tauz(asize, grain_type, numdens, xp, T, Ntot, charge, charge_dist, G0=1.68):
+def get_tauz(asize, grain_type, numdens, xp, T, Ntot, charge, charge_dist, xH2, zeta, Qabs, G0=1.7, includeCR=True):
     """
     compute the timescale of charge fluctuations.
     """
@@ -1995,7 +2015,32 @@ def get_tauz(asize, grain_type, numdens, xp, T, Ntot, charge, charge_dist, G0=1.
     xHp = xp[0]
     xCp = xp[1]
 
-    ne = nH*xHp + nC*xCp
+    if isinstance(nH, list):
+        #print("I'm running the list")
+        for i in range(len(nH)):
+            # Electrons coming from ionization of Carbon and Hydroen by ISRF.
+            ne  = nH[i]*xHp[i] + nC[i]*xCp[i]
+            # Secondary electrons from CR.
+            nH2  = nH[i]*xH2[i]
+            if nH > 1.0e3:
+                xeCR = CR_xe(nH2, zeta=zeta[i])
+                neCR = nH[i]*xeCR
+                # Take the largest electron density of the two.
+                ne = max(ne, neCR)
+    else:
+        #print("I'm running the individual parameters")
+        ne  = nH*xHp + nC*xCp
+        nH2  = nH*xH2
+        #print("H2 number density", nH2)
+        if nH > 1.0e3:
+            xeCR = CR_xe(nH2, zeta=zeta)
+            neCR = nH*xeCR
+            #print("Cosmic ray electrons = ", neCR)
+            # Take the largest electron density of the two.
+            ne = max(ne, neCR)
+
+    if includeCR == False:
+        ne  = nH*xHp + nC*xCp
 
     avg, std = weighted_avg_and_std(charge, charge_dist)
 
@@ -2003,18 +2048,17 @@ def get_tauz(asize, grain_type, numdens, xp, T, Ntot, charge, charge_dist, G0=1.
 
     for ii in range(len(charge)):
         zhere = charge[ii]
-        JPE  = Jrate_pe(asize, zhere, grain_type, Ntot, G0=G0)
+        JPE  = Jrate_pe(asize, zhere, grain_type, Ntot, Qabs, G0=G0)
         JE   = Jrate   (zhere, ne, 1.0, T, asize,'electron', grain_type)
         JH   = Jrate   (zhere, nH, xHp, T, asize,'hydrogen', grain_type)
         JC   = Jrate   (zhere, nC, xCp, T, asize,'carbon',   grain_type)
-        JTOT = JPE + JE + JH + JC
+        JCRpe= Jrate_pe_CR(zeta, asize, zhere, grain_type, Qabs)
+
+        JTOT = JPE + JE + JH + JC + JCRpe
 
         fz_Jtot_sum += charge_dist[ii]*JTOT
 
     tauz = std**2 / fz_Jtot_sum
-
-    del nH, nC, xHp, xCp, avg, std, zhere, JPE, JE, JH, JC, JTOT, fz_Jtot_sum
-    gc.collect(generation=2)
 
     return tauz
 

@@ -45,7 +45,7 @@ Qabs100  = fz.get_QabsTable(grain_type, 100)
 
 Qabs = [Qabs5, Qabs50, Qabs100]
 
-zmean, zmode, zstd  =  np.zeros(9), np.zeros(9), np.zeros(9)
+zmean, zmode, zstd, tauz  =  np.zeros(9), np.zeros(9), np.zeros(9), np.zeros(9)
 zminmax = np.array(np.zeros(2*9))
 fdistCR   = []
 
@@ -72,6 +72,9 @@ for kk in range(3):
         #new_zmax +=5
 
         ffzCR, ZZ              = fz.vector_fz        (Jpe, Je, Jh, Jc, JCRe, JCRpe, ZZall, new_zmin, new_zmax, includeCR=True)
+
+        # Charging timescale.
+        tauz[ii]               = fz.get_tauz         (grain_size[kk], grain_type, [nH[ii], nC[ii]], [xe[ii], 0.0], temp[ii], Ntot[ii], ZZ, ffzCR, xH2[ii], zeta, Qabs[kk], G0=G0, includeCR=True)
 
         Zm        = fz.get_Zmode(ZZ, ffzCR)
         zmode[ii+kk*3] = Zm
@@ -103,6 +106,7 @@ zmean_sil, zmode_sil, zstd_sil  =  np.zeros(9), np.zeros(9), np.zeros(9)
 zminmax_sil   = np.array(np.zeros(2*9))
 fdistCR_sil   = []
 
+tauz_sil = np.zeros_like(zmean_sil)
 
 phases = ["Warm Neutral Medium", "Cold Neutral Medium", "Cold Molecular Medium"]
 
@@ -126,6 +130,9 @@ for kk in range(3):
         new_zmin, new_zmax     = fz.get_new_zmin_zmax([nH[ii], nC[ii]], [xe[ii], 0.0], temp[ii], grain_size[kk], Ntot[ii], grain_type, Qabs[kk], zeta, zeq=zeq, G0=G0)
 
         ffzCR, ZZ              = fz.vector_fz        (Jpe, Je, Jh, Jc, JCRe, JCRpe, ZZall, new_zmin, new_zmax, includeCR=True)
+
+        # Charging timescale.
+        tauz_sil[ii]               = fz.get_tauz         (grain_size[kk], grain_type, [nH[ii], nC[ii]], [xe[ii], 0.0], temp[ii], Ntot[ii], ZZ, ffzCR, xH2[ii], zeta, Qabs[kk], G0=G0, includeCR=True)
 
         Zm                 = fz.get_Zmode(ZZ, ffzCR)
         zmode_sil[ii+kk*3] = Zm
@@ -698,11 +705,11 @@ ax.plot(ZZ_sil+0.5, ffzCR_sil, "-k", linewidth=2, drawstyle='steps', alpha=1.0)
 ax.plot(ZZ+0.5, ffzCR, "--r", linewidth=2, drawstyle='steps', alpha=1.0)
 
 
-ax.text(0.4*charges + zmin, 0.8, "$\\langle$Z$\\rangle =%.2f$"%zmean[jj + ii*3], fontsize=14, color='red')
-ax.text(0.4*charges + zmin, 0.7, "$\\sigma_{Z}\'=%.2f$"%zstd[jj + ii*3], fontsize=14, color='red')
+ax.text(0.25*charges + zmin, 0.8, "$\\langle$Z$\\rangle =%.2f$"%zmean[jj + ii*3], fontsize=14, color='red')
+ax.text(0.25*charges + zmin, 0.7, "$\\sigma_{Z}\'=%.2f$"%zstd[jj + ii*3], fontsize=14, color='red')
 
-ax.text(0.4*charges + zmin, 0.5, "$\\langle$Z$\\rangle =%.2f$"%zmean_sil[jj + ii*3], fontsize=14)
-ax.text(0.4*charges + zmin, 0.4, "$\\sigma_{Z}\'=%.2f$"%zstd_sil[jj + ii*3], fontsize=14)
+ax.text(0.25*charges + zmin, 0.5, "$\\langle$Z$\\rangle =%.2f$"%zmean_sil[jj + ii*3], fontsize=14)
+ax.text(0.25*charges + zmin, 0.4, "$\\sigma_{Z}\'=%.2f$"%zstd_sil[jj + ii*3], fontsize=14)
 
 #print(1.*charges + zmin)
 #ax.text(6, 0.8, "$\\langle$Z$\\rangle =%.2f$"%zmean[jj + ii*3], fontsize=14, color='red')
