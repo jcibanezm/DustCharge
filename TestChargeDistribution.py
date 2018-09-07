@@ -62,7 +62,7 @@ for kk in range(3):
 
         # Get the CR ionization rate given the Column density.
         # Update to the total column density instead of the weird Flash function.
-        zeta = fz.get_zeta(NH2[ii])
+        zeta = fz.get_zeta(Ntot[ii])
 
         ############################################################################################
         # Run the charge distribution calculation!!!
@@ -121,8 +121,7 @@ for kk in range(3):
 
         # Get the CR ionization rate given the Column density.
         # Update to the total column density instead of the weird Flash function.
-        #zeta = fz.get_zeta(Ntot[ii])
-        zeta = fz.get_zeta(NH2[ii])
+        zeta = fz.get_zeta(Ntot[ii])
 
         ############################################################################################
         # Run the charge distribution calculation!!!

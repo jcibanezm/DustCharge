@@ -198,7 +198,7 @@ def Jrate(Z, numdens, ionFrac, Temp, grain_size, partner, grain_type, Jmin=1.0e-
     return J
 
 
-def get_Emin(asize, Z):
+def get_oldEmin(asize, Z):
     """
     calculate the energy shift given a tunneling probability of 10^-3 for negatively charged grains.
     Note: Updated Emin calculation from Weingartner, Draine & Barr 2006. eq. (3).
@@ -225,11 +225,10 @@ def get_Emin(asize, Z):
 
     return emin
 
-def get_newEmin(asize, Z):
+def get_Emin(asize, Z):
     """
     calculate the energy shift given a tunneling probability of 10^-3 for negatively charged grains.
-    Note: Updated Emin calculation from Weingartner, Draine & Barr 2006. eq. (3).
-    Is it really? or is it commented.
+    Note: Updated Emin calculation from van Hoof et al. 2004 eq. (1). also in Weingartner, Draine & Barr 2006. eq. (3).
 
     Parameters:
         asize in Angstroms.
@@ -240,14 +239,16 @@ def get_newEmin(asize, Z):
     import numpy as np
 
 
-    if Z >= -1:
+    if Z >= -1.0:
         emin = 0.0
     else:
-        nu     = 1.0 * abs(Z + 1)
-        theta  = nu / (1.0 + nu**(-0.5))
+        nu     = 1.0 * abs(Z + 1.0)
+        theta  = nu / (1.0 + 1./np.sqrt(nu))
         emin   = theta*(1.0 - 0.3*(asize/10.)**(-0.45)*abs(Z+1.)**(-0.26))
 
     return emin
+
+
 def get_IPv(asize, Z, grain_type):
     """
     Calculate the ionization potential of a grain of a given size a, and charge Z.
@@ -1478,7 +1479,6 @@ def compute_fhere(numdens, xp, T, asize, Ntot, grain_type, Z, Qabs, zeta, G0=1.0
         for itt in range(int(math.floor(Z))):
             zprime = itt + 1
             JPE  = Jrate_pe(asize, zprime-1, grain_type, Ntot, Qabs, G0=G0)
-            #JION = Jrate(zprime-1, n, xe, T, mu*mp, asize,'ion',      grain_type)
             JE   = Jrate   (zprime, ne, 1.0, T, asize,'electron', grain_type)
 
             JH   = Jrate   (zprime-1, nH, xHp, T, asize,'hydrogen', grain_type)
@@ -1515,11 +1515,7 @@ def compute_fhere(numdens, xp, T, asize, Ntot, grain_type, Z, Qabs, zeta, G0=1.0
 
             JPE_CR = Jrate_pe_CR(zeta, asize, zprime, grain_type, Qabs)
 
-            #JION = Jrate(zprime,   n, xe, T, mu*mp,  asize,'ion',      grain_type)
-            #JE   = Jrate   (zprime+1, n, xe, T, asize,'electron', grain_type)
 
-            #JH   = Jrate   (zprime, n, xe, T, asize,'hydrogen', grain_type)
-            #JC   = Jrate   (zprime, n, xe, T, asize,'carbon',   grain_type)
             #JMg  = Jrate   (zprime, n, xe, T, asize,'magnesium',grain_type)
             #JSi  = Jrate   (zprime, n, xe, T, asize,'silicon',  grain_type)
             #JS   = Jrate   (zprime, n, xe, T, asize,'sulfur',   grain_type)
@@ -1534,11 +1530,6 @@ def compute_fhere(numdens, xp, T, asize, Ntot, grain_type, Z, Qabs, zeta, G0=1.0
 
             fhere = JE / (JPE + JION + JPE_CR)
             fz = fz*fhere
-
-    if Z!=0:
-        del zprime, JPE, JE, JH, JC, JION, fhere
-    del nH, nC, xHp, xCp, ne, fz0
-    #gc.collect(generation=2)
 
     return fz
 
@@ -2220,7 +2211,7 @@ def get_avgYieldQabs(Qabs, asize, Z, grain_type):
 
     return YieldQabs
 
-def get_zeta(NH2, model="high"):
+def get_zeta(NH, model="high"):
     """
     Get the local cosmic ray flux from the H2 column density and the CR flux models
     Polynomial fit in Appendix F in Padovani et al 2018.
@@ -2245,12 +2236,13 @@ def get_zeta(NH2, model="high"):
         print("Cosmic Ray ionization rate models available are 'high' and 'low'")
 
     for kk in range(10):
-        zeta  += K[kk]*np.power(np.log10(NH2), kk)
+        zeta  += K[kk]*np.power(np.log10(NH), kk)
 
     zeta = np.power(10, zeta)
 
-    if NH2 < 1.0e18:
-        zeta = 0.0
+    #Why do I have a floor here?
+    #if NH2 < 1.0e18:
+    #    zeta = 0.0
 
     return zeta
 
