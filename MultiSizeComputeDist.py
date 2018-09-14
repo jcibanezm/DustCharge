@@ -23,14 +23,14 @@ grain_type = "silicate"
 #grain_size = 5
 G0         = 1.7
 
-#sizes = [3.5, 5, 10, 50, 100, 500, 1000]
+sizes = [3.5, 5, 10, 50, 100]
 
 #sizes = [3.5, 5, 10]
 #sizes = [3.5, 5, 10, 50, 100]
 #sizes = [500, 1000]
-sizes = [10]
+#sizes = [10]
 
-percent = 0.01
+percent = 1.0
 
 include_CR = True
 
