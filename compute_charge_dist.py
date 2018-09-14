@@ -244,7 +244,7 @@ def get_Emin(asize, Z):
     else:
         nu     = 1.0 * abs(Z + 1.0)
         theta  = nu / (1.0 + 1./np.sqrt(nu))
-        emin   = theta*(1.0 - 0.3*(asize/10.)**(-0.45)*abs(Z+1.)**(-0.26))
+        emin   = theta*(echarge**2 /(4.*np.pi*(asize*AAtocm)))*(1.0 - 0.3*(asize/10.)**(-0.45)*abs(Z+1.)**(-0.26)) * ergtoeV
 
     return emin
 
@@ -299,9 +299,6 @@ def get_EA(asize, Z, grain_type):
         W   = 8.0
         Ebg = 5.
         EA  = W - Ebg + (Z-0.5)*echarge**2/(asize*AAtocm)*ergtoeV
-
-    del W
-    #gc.collect(generation=2)
 
     return EA
 
@@ -772,9 +769,6 @@ def get_sigma_pdt(hnu, asize, Z, grain_type):
     x = (hnu - hnu_pdt) / DeltaE
 
     sigma = 1.2e-17 * abs(Z) * x / (1.0 + x**2/3.0)**2
-
-    del DeltaE, hnu_pdt, x
-    #gc.collect(generation=2)
 
     return sigma
 
@@ -1764,7 +1758,7 @@ def get_new_zmin_zmax(numdens, xp, T, asize, Ntot, grain_type, Qabs, zeta, G0=1.
     if zmin < zmin_old: zmin=zmin_old
 
     if includeCR:
-        zmax +=10
+        zmax +=20
         zmax = min(zmax, zmax_old)
 
 

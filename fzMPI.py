@@ -219,7 +219,7 @@ def gather_all_data(cdist, comm):
 
         cdist["MPI"] = "MPI calculation of the charge distribution in %i procs" %(size)
 
-        fields  = ['dens', 'temp', 'Av', 'zmean', 'zmode', 'zstd', 'fdist', 'zminmax', 'nH', 'nC', 'ne', 'xe', 'xHp', 'xCp', 'nH2', 'fH2shield', 'G', 'tauz']
+        fields  = ['dens', 'temp', 'Av', 'zmean', 'zmode', 'zstd', 'fdist', 'zminmax', 'nH', 'nC', 'ne', 'xe', 'xHp', 'xCp', 'nH2', 'fH2shield', 'G', 'tauz', "G_CR", "cell_mass", "new_ne", "xH2", "Ntot", "new_xe", "ZZ"]
         # Loop over all procesors to concatenate the data.
         for proc in range(size-1):
             # Loop over al fields.
