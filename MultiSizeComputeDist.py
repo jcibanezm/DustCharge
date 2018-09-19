@@ -9,6 +9,7 @@ import numpy as np
 import compute_charge_dist as fz
 import fzMPI
 import time
+from pynverse import inversefunc
 
 comm = MPI.COMM_WORLD
 
@@ -202,6 +203,11 @@ new_xe = np.zeros_like(nH)
 
 cell_mass = np.array(box["cell_mass"][rand_index[pos*cells_per_proc:(pos+1)*cells_per_proc]].in_units("Msun"))
 
+NH2 = np.zeros(fH2shield)
+for i in range(len(NH2)):
+    NH2[i] = inversefunc(fz.get_f2shield, y_values=fH2shield[i], args=(temp[i]))
+
+
 #for grain_size in sizes:
 for ksize in range(len(sizes)):
 
@@ -249,7 +255,7 @@ for ksize in range(len(sizes)):
 
         index = ii
         
-        zeta = fz.get_zeta(Ntot[ii])
+        zeta = fz.get_zeta(NH2[ii])
         #zeta = fz.get_zeta(fH2shield[ii])
 
         ############################################################################################

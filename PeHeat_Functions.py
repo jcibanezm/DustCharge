@@ -189,6 +189,10 @@ def Gamma_per_grain(ZZall, Gamma_a_Z, ZZ_fz, fz, GG):
     zi_down = np.where(ZZall == ZZ_fz[0])[0][0]# find the index of the ZZ_fz[0] in ZZall 
     zi_up   = np.where(ZZall == ZZ_fz[-1])[0][0]# find the index of the ZZ_fz[-1] in ZZall
     
+    #b                   = np.log10(Gamma_a_Z) - np.log10(1.7)
+    #Gamma_dotdot_scaled = GG * 10.**(b)
+
+    #Gamma_pe_a = np.sum(fz*Gamma_dotdot_scaled[zi_down:zi_up+1])
     Gamma_pe_a = np.sum(fz*Gamma_a_Z[zi_down:zi_up+1])
     
     return Gamma_pe_a
