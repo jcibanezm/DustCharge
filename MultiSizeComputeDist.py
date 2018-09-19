@@ -24,14 +24,14 @@ grain_type = "silicate"
 #grain_size = 5
 G0         = 1.7
 
-sizes = [3.5, 5, 10, 50, 100]
+#sizes = [3.5, 5, 10, 50, 100]
 
 #sizes = [3.5, 5, 10]
 #sizes = [3.5, 5, 10, 50, 100]
 #sizes = [500, 1000]
-#sizes = [10]
+sizes = [5]
 
-percent = 1.0
+percent = 0.002
 
 include_CR = True
 
@@ -203,10 +203,9 @@ new_xe = np.zeros_like(nH)
 
 cell_mass = np.array(box["cell_mass"][rand_index[pos*cells_per_proc:(pos+1)*cells_per_proc]].in_units("Msun"))
 
-NH2 = np.zeros(fH2shield)
+NH2 = np.zeros_like(fH2shield)
 for i in range(len(NH2)):
     NH2[i] = inversefunc(fz.get_f2shield, y_values=fH2shield[i], args=(temp[i]))
-
 
 #for grain_size in sizes:
 for ksize in range(len(sizes)):
@@ -255,7 +254,9 @@ for ksize in range(len(sizes)):
 
         index = ii
         
-        zeta = fz.get_zeta(NH2[ii])
+        zeta = fz.get_zeta(NH2[index])
+        print("CR ionization rate = ", zeta, "compared to Ntot", fz.get_zeta(Ntot[index]), "NH2 = ", NH2[index], "Ntot = ", Ntot[index] )
+
         #zeta = fz.get_zeta(fH2shield[ii])
 
         ############################################################################################
@@ -328,6 +329,8 @@ for ksize in range(len(sizes)):
     cdist["ZZ"] = newZZ
 
     cdist["cell_mass"] = cell_mass
+
+    cdist["NH2"] = NH2
 
     # Now I need to retrieve and concatenate all data!
 
