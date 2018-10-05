@@ -40,12 +40,12 @@ def get_zcent(Gtot, T, ne, grain_type, grain_size):
 
     GTn = Gtot*np.sqrt(T)/ne
 
-    print("Calculating the centroid:")
-    print("G=", Gtot, "T=", T, "ne=", ne)
+    #print("Calculating the centroid:")
+    #print("G=", Gtot, "T=", T, "ne=", ne)
 
     centroid = khere*(1.0 - np.exp(-GTn/hhere)) * np.power(GTn, alphahere) + bhere    
 
-    print("Centroid = ", centroid)    
+    #print("Centroid = ", centroid)    
 
     return centroid
 
@@ -202,7 +202,7 @@ def get_zeta(NH2, model="high"):
     for kk in range(10):
         zeta  += K[kk]*np.power(np.log10(NH2), kk)
     
-    zeta = np.power(10, zeta)
+    zeta = np.power(10., zeta)
     
     # For very low H2 column densities set a minimum CR ionization rate.
     if NH2 < 1.0e19:
