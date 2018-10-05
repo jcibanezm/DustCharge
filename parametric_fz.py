@@ -3,6 +3,7 @@ from scipy.interpolate import interp1d
 
 eVtoerg       = 1.602e-12
 ergtoeV       = 6.242e11
+clight        = 2.99792458e10   # cm s-1
 
 
 def get_zcent(Gtot, T, ne, grain_type, grain_size):
@@ -19,7 +20,6 @@ def get_zcent(Gtot, T, ne, grain_type, grain_size):
         alpha      = [0.4318, 0.3573, 0.3857, 0.4081, 0.3210, 0.3390, 0.3635]
         h          = [71., 117., 110., 490., 572., 438., 486.]
     else:
-        print("I have copied the table for silicates!!! Update and put the parameters for carbonaceous grains here!!!")
         k          = [0.0045, 0.0139, 0.0143, 0.1868, 2.1251, 5.7066, 5.9382]
         b          = [-0.0794, -0.2490, -0.4209, -0.2701, -0.0450, 0.6004, 1.2954]
         alpha      = [0.5270, 0.4642, 0.5257, 0.4610, 0.2937, 0.3419, 0.3988]
@@ -40,7 +40,12 @@ def get_zcent(Gtot, T, ne, grain_type, grain_size):
 
     GTn = Gtot*np.sqrt(T)/ne
 
-    centroid = khere*(1.-np.exp(-GTn/hhere))*np.poe(GTn, alphahere) + bhere
+    print("Calculating the centroid:")
+    print("G=", Gtot, "T=", T, "ne=", ne)
+
+    centroid = khere*(1.0 - np.exp(-GTn/hhere)) * np.power(GTn, alphahere) + bhere    
+
+    print("Centroid = ", centroid)    
 
     return centroid
 
@@ -62,7 +67,6 @@ def get_zwidth(grain_size, grain_type, zcent):
 
         d = [0.1669, 0.2961, 0.4085, 0.5086, 0.5385, 1.0217, 1.4119]
     else:
-        print("I have copied the table for silicates!!! Update and put the parameters for carbonaceous grains here!!!")
         if zcent >= 0:
             c        = [0.3308, 0.3987, 0.6954, 1.7705, 2.5930, 5.7972,  8.2829]
             eta      = [0.2270, 0.5453, 1.0163, 2.4686, 4.1751, 19.5302, 40.5363]
@@ -85,10 +89,10 @@ def get_zwidth(grain_size, grain_type, zcent):
     width = chere * (1.0 - np.exp(-np.abs(zcent)/etahere)) + dhere
     return width
 
-def get_fz(ntot=1.0, T=1.0, xe=1.0, Ntot=1.0, NH2=1.0, grain_type="silicate", grain_size=10, xH2="default", G0=1.7, correct_edens=False, CR_model="high"):
+def get_fz(ntot=1.0, T=1.0, xe=1.0, Ntot=1.0, NH2=1.0, grain_type="silicate", grain_size=10, xH2="default", G0=1.7, correct_edens=False, CR_model="high", output="default"):
     """
     Compute the dust charge distribution as a function of the ISM parameters.
-    Use the parametric equations in Ibañez-Mejia et al 2018.
+    Use the parametric equations in Ibanez-Mejia et al 2018.
     
     input:
         nH   = total hydrogen volume density, nHI + nHII + 2*nH2
@@ -106,31 +110,38 @@ def get_fz(ntot=1.0, T=1.0, xe=1.0, Ntot=1.0, NH2=1.0, grain_type="silicate", gr
         
         CR_model = cosmic ray protons spectrum. 'low' or 'high'. See Discussion in Ivlev et al 2015 and Padovanni et al 2018. Default 'high'.
     
+        output = return the charge array and charge distribution function, or centroid and width?
+                 For centroid and width select: output="centroid"
+
     return:
-        Charge array, PDF
+        Charge array, PDF  or centroid and width.
     """
 
     # Get the effective strength of the radiation field.
-    Av   = Ntot / 1.87e22
+    Av   = Ntot / 1.87e21
     Geff = G0 * np.exp(-2.5*Av)
+    #print("Effective radiation field strength Geff=", Geff)
     
     # Get the intensity of the H2 phosphoresence in units of the Habing Field.
     # Zeta - Use the equation by Padovani et al 2018 to get CR flux given Ntot.
     
     zeta  = get_zeta(NH2)
+    #print("CR ionization rate=", zeta)
     
-    omega = 0.5     # dust albedo
-    Rv    = 3.1     # Slope of the extinction curve
+    omega   = 0.5     # dust albedo
+    Rv      = 3.1     # Slope of the extinction curve
     NH2_mag = 1.8e21# Typical dust to extinction ratio.
     
     # FUV in units of eV s-1 cm-3
-    FUV_CR = 960. * (1. / (1.-omega))* (NH2_mag / 1.0e21) * (Rv/3.2)**1.5 * (zeta / 1.0e-17) * 12.0
+    FUV_CR = 960. * (1. / (1.-omega))* (NH2_mag / 1.0e21) * (Rv/3.2)**1.5 * (zeta / 1.0e-17) * 12.4 *eVtoerg / clight
+    #print("FUV_CR = ", FUV_CR)
 
     # energy density of a Habing field.
-    u_Hab = 5.33e-14 * ergtoeV
+    u_Hab = 5.33e-14
 
     # convert the CR-induced radiation field energy to Habing field units
     G_CR   = FUV_CR / u_Hab
+    #print("CR induced radiation field G_CR=", G_CR)
 
     Gtot = Geff + G_CR
     
@@ -143,18 +154,22 @@ def get_fz(ntot=1.0, T=1.0, xe=1.0, Ntot=1.0, NH2=1.0, grain_type="silicate", gr
         ne = ntot*xe
 
     zcent = get_zcent(Gtot, T, ne, grain_type, grain_size)
+    zwidth = get_zwidth(grain_size, grain_type, zcent) 
     
-    zmin = int(zcent - 3*zwidth)
-    zmax = int(zcent + 3*zwidth)
+    zmin = int(zcent - 5*zwidth)
+    zmax = int(zcent + 5*zwidth)
     
-    ZZ = np.araynge(zmin, zmax+1)
+    ZZ = np.arange(zmin, zmax+1)
     
     # Assume a Gaussian distribution for the shape of the charge distribution.
     ffz = np.zeros_like(ZZ)
     ffz = 1.0 * np.exp(-(ZZ - zcent)*(ZZ - zcent)/(2*zwidth))
     ffz = ffz / np.sum(ffz) # Normalize the resulting distribution.
     
-    return ZZ, ffz
+    if output == "default":
+        return ZZ, ffz
+    else:
+        return zcent, zwidth
 
 # Add function to compute the cosmic ray flux.
 def get_zeta(NH2, model="high"):
@@ -169,7 +184,7 @@ def get_zeta(NH2, model="high"):
         """
     
     # Set a ceiling for the CR ionization rate. Too small column densities result in crazy high zeta values.
-    NH2 = max(NH2, 1.0e19)
+    #NH2 = max(NH2, 1.0e19)
     
     kL = [-3.331056497233e6, 1.207744586503e6, -1.913914106234e5, 1.731822350618e4, -9.790557206178e2, 3.543830893824e1, -8.034869454520e-1, 1.048808593086e-2, -6.188760100997e-5, 3.122820990797e-8]
     kH = [ 1.001098610761e7, -4.231294690194e6, 7.921914432011e5, -8.623677095423e4, 6.015889127529e3, -2.789238383353e2, 8.595814402406e0, -1.698029737474e-1, 1.951179287567e-3, -9.937499546711e-6]
@@ -185,13 +200,13 @@ def get_zeta(NH2, model="high"):
         print("Cosmic Ray ionization rate models available are 'high' and 'low'")
     
     for kk in range(10):
-        zeta  += K[kk]*np.power(np.log10(NH), kk)
+        zeta  += K[kk]*np.power(np.log10(NH2), kk)
     
     zeta = np.power(10, zeta)
     
-    # For very low H2 column densities,
-    #if NH2 < 1.0e19:
-    #    zeta = 0.0
+    # For very low H2 column densities set a minimum CR ionization rate.
+    if NH2 < 1.0e19:
+        zeta = 1.0e-17
 
     return zeta
 
@@ -202,7 +217,7 @@ def compute_new_xe(numdens, xe, xH2, zeta):
     ne   = numdens*xe
     
     #print("H2 number density", nH2)
-    if nH > 1.0e3:
+    if numdens > 1.0e3:
         nH2 = numdens*xH2
         # Equation from Caselli et al 2002 model 3.
         xeCR = 6.7e-6*(nH2)**(-0.56)*np.sqrt(zeta/1.0e-17)

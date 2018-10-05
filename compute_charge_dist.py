@@ -1428,6 +1428,15 @@ def get_f2shield(x, temp):
     f2s = 0.965 / (1. + x / 5e14*1./b5)**2 + 0.035 / np.sqrt(1. + x / 5e14)*np.exp(-8.5e-4*np.sqrt(1.+x / 5e14))
     return f2s
 
+def get_NH2(fH2, temp):
+    """
+    Take the parameter fshield H2 (H2 self shielding function) from FLASH, and return the H2 column density.
+    """    
+    from pynverse import inversefunc
+    NH2 = inversefunc(get_f2shield, y_values=fH2, args=(temp))
+
+    return NH2
+
 def compute_new_xe(numdens, xp, xH2, zeta):
     """
     Update the electron density and electron fraction for densities above 1000 cm-3.
@@ -2287,7 +2296,7 @@ def get_zeta(NH, model="high"):
     return zeta
 
 
-def get_G_CR(Ntot, model="high"):
+def get_G_CR(NH2, model="high"):
     """
     Compute the energy density of the cosmic ray induced ultraviolet radiation field
     in units of the Habing Field.
@@ -2300,7 +2309,7 @@ def get_G_CR(Ntot, model="high"):
         Cosmic Ray induced radiation field in units of Habing Field.
     """
 
-    zeta = get_zeta(Ntot, model=model)
+    zeta = get_zeta(NH2, model=model)
 
     FUV_H2 = np.zeros_like(zeta)
 
