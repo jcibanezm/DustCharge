@@ -90,7 +90,7 @@ def get_stickCoef(Z, asize, grain_type):
     An electron colliding with a dust grain has some probability of scattering.
     As the grain acquires more electrons the electron afinity decreases.
     Electrons impinging neutral grains may undergo inelastic scattering and transfer its energy onto the grain lattice.
-    Positively charge grains are expected te recombine.
+    Positively charge grains are expected to recombine.
     We adopt a maximum scattering probability of Pes = 0.5, then the maximmum sticking coef. is (1-Pes)=0.5 (as in WD01)
 
     Parameters:
@@ -1091,7 +1091,28 @@ def sec_e_yield(E):
 
     return eYield
 
-def Jrate_CR(nH, xH2, asize, Z, grain_type, zeta=1.0e-17):
+def stick_CR(E, grain_type, grain_size):
+    """
+    Sticking efficiency of CR electrons. s(E) = 1 if R(E) < 4a/3, where R(E) is the electron stopping range given in eq 11 in Draine and Salpeter 1979.
+    """
+
+    if grain_type == "carbonaceous":
+        rho = 2.4
+    else:
+        rho = 3.0
+
+    EkeV = E/1000.
+
+    Re = 300 * (rho)**(-0.85)*(EkeV)**(1.5)
+
+    if Re < 4*grain_size/3.0:
+        stick = 1.
+    else:
+        stick = 0.
+
+    return stick
+
+def Jrate_CR(asize, grain_type):
     """
     Calculate the current of electrons/protos resulting from cosmic ray ionization.
 
@@ -1106,22 +1127,20 @@ def Jrate_CR(nH, xH2, asize, Z, grain_type, zeta=1.0e-17):
 
     pia2 = math.pi*asize**2
 
-    xe = CR_xe(nH, xH2, zeta=zeta)
-
     hnu_up = 13.6
     nu_up  = 13.6 / hplanck
 
     Elow = 1.5e-2 # eV
     Eup  = 1.0e10 # infinity.
 
-    stick = get_stickCoef(Z, asize, grain_type)
+    #stick = get_stickCoef(Z, asize, grain_type)
 
-    def CR_current(E, stick):
-        current = 4. * math.pi * CRparticles_spectra(E)*(stick - sec_e_yield(E))
+    def CR_current(E):
+        current = 4. * math.pi * CRparticles_spectra(E, particle="electron")*(stick_CR(E, grain_type, asize) - sec_e_yield(E))
         return current
 
-    #J_CR = ne* pia2 * integrate.quad(CR_current, Elow, Eup, args=(stick))[0]
-    J_CR = 0.
+    J_CR = pia2 * integrate.quad(CR_current, Elow, Eup)[0]
+    #J_CR = 0.
 
     return J_CR
 
@@ -1162,7 +1181,7 @@ def Jrate_pe_CR(zeta, asize, Z, grain_type, Qabs):
     return Jpe_CR
 
 
-def get_zeq(numdens, xp, T, asize, Ntot, grain_type, Qabs, G0=1.0):
+def get_zeq(numdens, xp, T, asize, Ntot, grain_type, Qabs, G0=1.7):
     """
     Compute the equilibrium charge.
     """
@@ -1326,7 +1345,7 @@ def get_zeq_vec(Jpe, Je, Jh, Jc, ZZ, asize, grain_type):
     return zeq
 
 
-def compute_currents(numdens, xp, xH2, T, zeta, asize, Ntot, grain_type, Qabs, mu=1.0, zmin='default', zmax='default', G0=1.0, includeCR=False):
+def compute_currents(numdens, xp, xH2, T, zeta, asize, Ntot, grain_type, Qabs, mu=1.0, zmin='default', zmax='default', G0=1.7, includeCR=False):
     """
     Compute the currents from photoelectric ejection of electrons, and sticking collisions from ions and electrons.
     Return arrays of Jpe, Jion, Je for all charges between zmin and zmax.
@@ -1460,13 +1479,13 @@ def compute_CR_currents(numdens, zeta, asize, grain_type, Qabs, zmin="default", 
 
     for ii in range(zitts):
         zhere = zmin + ii
-        #JCRe[ii]    = Jrate_CR   (numdens, asize, zhere, grain_type)
+        JCRe[ii]    = Jrate_CR   (asize, grain_type)
         JCRpe[ii]   = Jrate_pe_CR(zeta, asize, zhere, grain_type, Qabs)
         ZZ[ii]      = zhere
 
     return JCRe, JCRpe, ZZ
 
-def compute_fhere(numdens, xp, T, asize, Ntot, grain_type, Z, Qabs, zeta, G0=1.0):
+def compute_fhere(numdens, xp, T, asize, Ntot, grain_type, Z, Qabs, zeta, G0=1.7):
     """
     Compute the distribution function for a given charge Z.
     """
