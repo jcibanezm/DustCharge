@@ -57,13 +57,15 @@ def get_zwidth(grain_size, grain_type, zcent):
     
     size_table = [3.5, 5.0, 10., 50., 100., 500., 1000.]
 
+    small = 1.0e-10
+
     if grain_type == "silicate":
         if zcent >= 0:
             c        = [0.4246, 0.3237, 0.4746, 1.1309, 1.7014, 3.7183,  5.3094]
             eta      = [0.2308, 0.3386, 0.7528, 1.6041, 2.6212, 12.9426, 26.6146]
         else:
-            c        = [0.5864, 0.5383, 0.1553, 0.0323,  1.0e-99, 1.0e-99, 1.0e-99]
-            eta      = [0.4415, 0.9440, 0.4803, 1.0e-99, 1.0e-99, 1.0e-99, 1.0e-99]
+            c        = [0.5864, 0.5383, 0.1553, 0.0323,  small, small, small]
+            eta      = [0.4415, 0.9440, 0.4803, small, small, small, small]
 
         d = [0.1669, 0.2961, 0.4085, 0.5086, 0.5385, 1.0217, 1.4119]
     else:
@@ -71,8 +73,8 @@ def get_zwidth(grain_size, grain_type, zcent):
             c        = [0.3308, 0.3987, 0.6954, 1.7705, 2.5930, 5.7972,  8.2829]
             eta      = [0.2270, 0.5453, 1.0163, 2.4686, 4.1751, 19.5302, 40.5363]
         else:
-            c        = [0.1531, 0.2801, 0.0107, 0.0260,  0.0260,  1.0e-99, 1.0e-99]
-            eta      = [0.1642, 1.001, 1.0e-99, 1.0e-99, 1.0e-99, 1.0e-99, 1.0e-99]
+            c        = [0.1531, 0.2801, 0.0107, 0.0260,  0.0260,  small, small]
+            eta      = [0.1642, 1.001, small, small, small, small, small]
         
         d = [0.2216, 0.3827, 0.4901, 0.5573, 0.5848, 1.0066, 1.3812]
 
@@ -156,15 +158,14 @@ def get_fz(ntot=1.0, T=1.0, xe=1.0, Ntot=1.0, NH2=1.0, grain_type="silicate", gr
     zcent = get_zcent(Gtot, T, ne, grain_type, grain_size)
     zwidth = get_zwidth(grain_size, grain_type, zcent) 
     
-    zmin = int(zcent - 5*zwidth)
-    zmax = int(zcent + 5*zwidth)
+    zmin = np.floor(zcent - 5*zwidth)
+    zmax = np.ceil(zcent + 5*zwidth)
     
     ZZ = np.arange(zmin, zmax+1)
     
     # Assume a Gaussian distribution for the shape of the charge distribution.
     ffz = np.zeros_like(ZZ)
-    ffz = 1.0 * np.exp(-(ZZ - zcent)*(ZZ - zcent)/(2*zwidth))
-    ffz = ffz / np.sum(ffz) # Normalize the resulting distribution.
+    ffz = 1.0 / (np.sqrt(2.*np.pi*zwidth**2)) * np.exp(-(ZZ - zcent)*(ZZ - zcent)/(2*zwidth**2))
     
     if output == "default":
         return ZZ, ffz
@@ -221,7 +222,7 @@ def compute_new_xe(numdens, xe, xH2, zeta):
         nH2 = numdens*xH2
         # Equation from Caselli et al 2002 model 3.
         xeCR = 6.7e-6*(nH2)**(-0.56)*np.sqrt(zeta/1.0e-17)
-        neCR = nH*xeCR
+        neCR = nH2*xeCR
         ne = max(ne, neCR)
         xe = ne / numdens
     
