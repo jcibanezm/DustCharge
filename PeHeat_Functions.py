@@ -167,7 +167,7 @@ def get_Gamma_pe_dotdot(asize, Z, grain_type, Ntot, Qabs, G0=1.7):
 
 ################################################################################################
 
-def Gamma_per_grain(ZZall, Gamma_a_Z, ZZ_fz, fz, GG):
+def Gamma_per_grain(ZZall, Gamma_a_Z, ZZ_fz, fdist, GG):
     """
     Computes the heating rate per grain. Equation 38 in Weingartner and Draine 2001.
     This function requires the charge distribution function of the grain. 
@@ -189,12 +189,68 @@ def Gamma_per_grain(ZZall, Gamma_a_Z, ZZ_fz, fz, GG):
     zi_down = np.where(ZZall == ZZ_fz[0])[0][0]# find the index of the ZZ_fz[0] in ZZall 
     zi_up   = np.where(ZZall == ZZ_fz[-1])[0][0]# find the index of the ZZ_fz[-1] in ZZall
     
-    #b                   = np.log10(Gamma_a_Z) - np.log10(1.7)
-    #Gamma_dotdot_scaled = GG * 10.**(b)
-
     #Gamma_pe_a = np.sum(fz*Gamma_dotdot_scaled[zi_down:zi_up+1])
-    Gamma_pe_a = np.sum(fz*Gamma_a_Z[zi_down:zi_up+1])
+    Gamma_pe_a = np.sum(fdist*Gamma_a_Z[zi_down:zi_up+1])
     
     return Gamma_pe_a
+
+
+def Cool_per_Grain(grain_size, grain_type, ZZ, fdist, ntot, xe, temp):
+    """
+    Compute the cooling per grain.
+    """
+    import numpy as np
+    import math
+    import compute_charge_dist as fz
+    
+    tau = grain_size * fz.AAtocm * fz.kb * temp / fz.echarge**2
+    
+    # Loop over species!
+    Cool_spec = 0
+    for partner in ["electron", "hydrogen", "carbon"]:
+        
+        Cool_Zall = 0
+        # Loop over charge
+        for zi in range(len(ZZ)):
+            
+            if partner == "electron":
+                nu          = -1*ZZ[zi]
+                stick_coef  = fz.get_stickCoef(ZZ[zi], grain_size, grain_type)
+                charge_frac = xe
+                mass        = fz.me
+            
+            elif partner == "hydrogen":
+                nu         = ZZ[zi]
+                stick_coef = 1.0
+                charge_frac = xe
+                mass        = fz.mH
+            
+            elif partner == "carbon":
+                nu         = ZZ[zi]
+                stick_coef = 1.0
+                # Maximum fraction of ionized Carbon is 1e-4*ntot.
+                charge_frac = min(1.0e-4, xe)
+                mass        = fz.mC
+            
+            Cooltilde = 1.0
+            
+            if nu < 0:
+                Cooltilde = fz.Jtilde_neg(tau, nu)
+            elif nu == 0:
+                Cooltilde = fz.Jtilde_0(tau, nu)
+            else:
+                Cooltilde = fz.Jtilde_pos(tau, nu)
+            
+            #print(zi)
+            Cool_Zhere = fdist[zi]*Cooltilde*fz.kb*temp
+            Cool_Zall += Cool_Zhere
+        
+        #print("Collisional Partner = ", partner)
+        Cool_spec += ntot*charge_frac*stick_coef*np.sqrt(8.0*fz.kb*temp/(np.pi*mass))*Cool_Zall
+    
+    Cool_tot = math.pi * (grain_size*AAtocm)**2 * Cool_spec
+    
+    return Cool_tot
+
 
 
