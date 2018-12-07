@@ -1188,11 +1188,11 @@ def get_zeq(numdens, xp, T, asize, Ntot, grain_type, Qabs, G0=1.7):
     import math
     import numpy as np
 
-    zlow = get_Zmin(asize, grain_type)
-    zup  = get_Zmax(asize, grain_type)
+    zlow_old = get_Zmin(asize, grain_type)
+    zup_old  = get_Zmax(asize, grain_type)
 
-    zlow = max(-200, zlow)
-    zup  = min(200, zup)
+    zlow = max(-1000, zlow_old)
+    zup  = min(1000, zup_old)
 
     gotZeq = False
 
@@ -1239,8 +1239,8 @@ def get_zeq(numdens, xp, T, asize, Ntot, grain_type, Qabs, G0=1.7):
             print(" flow = ", flow, "fup = ", fup)
 
             print("Setting the minimum and maximum charge by hand, to come out of zeq!!!")
-            zup  = 0.02
-            zlow = 0.01
+            zup  = zup_old
+            zlow = zlow_old
             gotZeq = True
 
 
@@ -1396,13 +1396,13 @@ def compute_currents(numdens, xp, xH2, T, zeta, asize, Ntot, grain_type, Qabs, m
 
     if zmin == 'default':
         zmin = int(get_Zmin(asize, grain_type))
-    elif zmin > 0:
-        zmin = 0
+    #elif zmin > 0:
+    #zmin = 0
 
     if zmax == 'default':
         zmax = int(get_Zmax(asize, grain_type))
-    elif zmax < 0:
-        zmax = 0
+    #elif zmax < 0:
+    #    zmax = 0
 
     zitts = int(abs(zmax) + abs(zmin)+1)
 
@@ -1598,7 +1598,10 @@ def fhere_vec(Jpe, Je, Jh, Jc, JCRe, JCRpe, ZZ, zhere, includeCR=False):
     if zhere ==0 or zhere > np.max(ZZ) or zhere < np.min(ZZ):
         fz = fz0
     elif zhere > 0 and zhere <= np.max(ZZ):
-        i00   = np.argwhere(ZZ == 0)[0][0]      # find the index of ZZ == 0
+        if 0 in ZZ:
+            i00   = np.argwhere(ZZ == 0)[0][0]      # find the index of ZZ == 0
+        else:
+            i00 = 0     # If the grain is too positively charged I Sum between zmin (index 0), and zhere.
         ihere = np.argwhere(ZZ == zhere)[0][0]  # find the index of zhere.
 
         nbins = ihere - i00
@@ -1628,7 +1631,10 @@ def fhere_vec(Jpe, Je, Jh, Jc, JCRe, JCRpe, ZZ, zhere, includeCR=False):
         fz = fz0 * Jratio
 
     elif zhere < 0 and zhere >= np.min(ZZ):
-        i00   = np.argwhere(ZZ == 0)[0][0]      # find the index of ZZ == 0
+        if 0 in ZZ:
+            i00   = np.argwhere(ZZ == 0)[0][0]      # find the index of ZZ == 0
+        else:
+            i00 = np.len(ZZ)-1 # if the grain is too negatively charged, I sum between zhere and zmin (last index of array ZZ.)
         ihere = np.argwhere(ZZ == zhere)[0][0]   # find the index of zhere.
 
         #print("ihere and i00", ihere, i00)
@@ -1692,8 +1698,8 @@ def get_new_zmin_zmax(numdens, xp, T, asize, Ntot, grain_type, Qabs, zeta, G0=1.
     zmin_old = int(get_Zmin(asize, grain_type))
     zmax_old = int(get_Zmax(asize, grain_type))
 
-    zmin_old = max(-200, zmin_old)
-    zmax_old = min(400, zmax_old)
+    #zmin_old = max(-1000, zmin_old)
+    #zmax_old = min(1000, zmax_old)
 
     #print(zmin_old, zmax_old)
 
@@ -1701,7 +1707,11 @@ def get_new_zmin_zmax(numdens, xp, T, asize, Ntot, grain_type, Qabs, zeta, G0=1.
     # systematically look at higher charges, when the charge probability has decreased by 10^8.
     # Go up by 5 charges.
     ff   = 1.0
-    zpp  = 5
+    if asize < 1000:
+        zpp  = 5
+    else:
+        zpp = 10
+
     zmax_test = zeq + zpp
 
     if zmax_old > zmax_test:
@@ -1710,16 +1720,15 @@ def get_new_zmin_zmax(numdens, xp, T, asize, Ntot, grain_type, Qabs, zeta, G0=1.
 
         while ff > 1.0e-3:
         #while zpp <= 5:
-            f_up        = compute_fhere([nH, nC], [xHp, xCp], T, asize, Ntot, grain_type, zeq+zpp, Qabs, zeta, G0=G0)
+            f_up        = compute_fhere([nH, nC], [xHp, xCp], T, asize, Ntot, grain_type, zmax_test, Qabs, zeta, G0=G0)
             ff          = f_up / f_mean
-            zmax_test   = zeq + zpp
-            zpp        += 5
+            zmax_test   = zmax_test + zpp
             counter    +=1
             if counter%50 == 0 :
                 print("Calculating the new MAXIMUM charge is taking a bit long. Currently at counter %i"%counter)
-                #print("Current testing charge %i"%(zeq+zpp))
-                #print("f_mean        = %.4g"%f_mean)
-                #print("f_up          = %.4g"%f_up)
+                print("Current testing charge %i"%(zmax_test))
+                print("f_mean        = %.4g"%f_mean)
+                print("f_up          = %.4g"%f_up)
                 print("f_up / f_mean = %.4g"%ff)
                 if counter >= 100:
                     zmax = zmax_test
@@ -1736,7 +1745,10 @@ def get_new_zmin_zmax(numdens, xp, T, asize, Ntot, grain_type, Qabs, zeta, G0=1.
 
     # Do the same for the negative charges.
     ff   = 1.0
-    zmm  = -5
+    if asize < 1000:
+        zmm  = -5
+    else:
+        zmm = -10
     zmin_test = zeq + zmm
 
     # If the minimum charge given by equation 24 WD01
@@ -1745,20 +1757,16 @@ def get_new_zmin_zmax(numdens, xp, T, asize, Ntot, grain_type, Qabs, zeta, G0=1.
         counter = 0
 
         while ff > 1.0e-3:
-            f_down    = compute_fhere([nH, nC], [xHp, xCp], T, asize, Ntot, grain_type, zeq + zmm, Qabs, zeta, G0=G0)
+            f_down    = compute_fhere([nH, nC], [xHp, xCp], T, asize, Ntot, grain_type, zmin_test, Qabs, zeta, G0=G0)
             ff        = f_down / f_mean
-            zmm      += -1
-            zmin_test = zeq + zmm
+            zmin_test = zmin_test + zmm
             counter  +=1
             if counter%50 == 0 :
                 print("Calculating the new MINIMUM charge is taking a bit long. Currently at counter %i"%counter)
-                #print("Current testing charge %i"%(zeq+zmm))
-                #print("f_mean", f_mean)
-                #print("f_down", f_down)
-                print("ff    ", ff    )
-                #print("f_mean        = %.4g"%f_mean)
-                #print("f_down        = %.4g"%f_down)
-                #print("f_down/f_mean = %.4g"%ff)
+                print("Current testing charge %i"%(zeq+zmm))
+                print("f_mean", f_mean)
+                print("f_down", f_down)
+                print("f_down/f_mean = %.4g"%ff)
                 if counter >= 100:
                     zmin = zmin_test
                     break
@@ -1942,7 +1950,7 @@ def vector_fz(Jpe, Je, Jh, Jc, JCRe, JCRpe, ZZ, zmin, zmax, includeCR=False):
 
     for i in range(zitts):
         #zhere     = ZZ[i]
-        zhere     = zmin + i
+        zhere     = int(zmin + i)
         fhere     = fhere_vec(Jpe, Je, Jh, Jc, JCRe, JCRpe, ZZ, zhere, includeCR=includeCR)
         fz[i]     = fhere
         newZZ[i]  = zhere
